@@ -191,7 +191,14 @@ export default function AdminApp() {
       });
 
       if (!res.ok) {
-        throw new Error("Unable to execute database delete command for ad");
+        let errMsg = "Unable to execute database delete command for ad";
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) {
+            errMsg = errData.error;
+          }
+        } catch (je) {}
+        throw new Error(errMsg);
       }
 
       setAds(ads.filter(ad => ad.id !== id));
@@ -362,7 +369,14 @@ export default function AdminApp() {
       });
 
       if (!res.ok) {
-        throw new Error("Unable to execute database delete command");
+        let errMsg = "Unable to execute database delete command";
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) {
+            errMsg = errData.error;
+          }
+        } catch (je) {}
+        throw new Error(errMsg);
       }
 
       setApps(apps.filter(app => app.id !== id));

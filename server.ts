@@ -7,68 +7,7 @@ import dotenv from "dotenv";
 // Configure environment variable definitions
 dotenv.config();
 
-const SEED_APPS = [
-  {
-    id: 1,
-    name: "VISION79 Sentinel Cloud",
-    subtitle: "Intelligent Vulnerability & Security Scanner",
-    description: "Real-time threat monitoring, automated vulnerability analysis, and immediate alert dispatcher. Protect your Cloud Run instances with automated penetration reports.",
-    category: "web",
-    pricingType: "free_trial",
-    logoUrl: "lucide:ShieldCheck",
-    accessUrl: "https://sentinel.vision79.example.com/demo",
-    launchCount: 184,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 2,
-    name: "VISION79 Canvas Designer",
-    subtitle: "Vector Workspace & Interactive Wireframes",
-    description: "A fast, responsive collaborative design workspace featuring advanced wireframing, fluid animation layouts, and native UI component configuration exports.",
-    category: "desktop",
-    pricingType: "premium",
-    logoUrl: "lucide:Compass",
-    accessUrl: "https://cdn.vision79.example.com/downloads/VISION79_Canvas_1.4.dmg",
-    launchCount: 642,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 3,
-    name: "VISION79 Pulse Monitor",
-    subtitle: "Zero-Config Distributed Traces & Metrics",
-    description: "Consolidate your microservice logs and latency benchmarks easily. High-performance stream metrics designed for lightning-fast container diagnostics.",
-    category: "web",
-    pricingType: "free",
-    logoUrl: "lucide:Activity",
-    accessUrl: "https://pulse.vision79.example.com/dashboard",
-    launchCount: 2914,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 4,
-    name: "VISION79 Terminal Core",
-    subtitle: "GPU-Accelerated Dev Workstation Screen Console",
-    description: "A minimalist dev environment terminal wrapper. Supports split buffers, custom shader typography, and integrated live telemetry debugger loops.",
-    category: "desktop",
-    pricingType: "free",
-    logoUrl: "lucide:Terminal",
-    accessUrl: "https://cdn.vision79.example.com/terminal/VISION79_Terminal_Setup.msi",
-    launchCount: 812,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 5,
-    name: "VISION79 Spector AI",
-    subtitle: "Automated TypeScript Type & Spec Generator",
-    description: "Analyze your live application outputs to generate pristine TypeScript schemas, API documentation cards, and integration tests on-the-fly dynamically.",
-    category: "web",
-    pricingType: "premium",
-    logoUrl: "lucide:Eye",
-    accessUrl: "https://spector.vision79.example.com/sandbox",
-    launchCount: 419,
-    createdAt: new Date().toISOString()
-  }
-];
+const SEED_APPS: any[] = [];
 
 let sqliteModule: any = null;
 
@@ -83,29 +22,7 @@ async function loadSqlite() {
   }
 }
 
-const SEED_ADS = [
-  {
-    id: 1,
-    title: "VISION79 Enterprise Gateway",
-    subtitle: "Secure and simplify team operations with zero-trust network access (ZTNA). Complete audit logging.",
-    imageUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80",
-    linkUrl: "https://sentinel.vision79.example.com/demo"
-  },
-  {
-    id: 2,
-    title: "Scale Smarter with Sentinel Analytics",
-    subtitle: "Real-time AI-guided predictive analysis for memory and compute spikes across Kubernetes nodes.",
-    imageUrl: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1200&q=80",
-    linkUrl: "https://pulse.vision79.example.com/dashboard"
-  },
-  {
-    id: 3,
-    title: "GPU-Accelerated Workspace v2",
-    subtitle: "The most responsive web-based graphics shell terminal wrapper. Now with split buffer support.",
-    imageUrl: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&w=1200&q=80",
-    linkUrl: "https://cdn.vision79.example.com/terminal/VISION79_Terminal_Setup.msi"
-  }
-];
+const SEED_ADS: any[] = [];
 
 const JSON_DB_FILE = path.join(process.cwd(), "vision79_saas.json");
 const JSON_ADS_FILE = path.join(process.cwd(), "vision79_ads.json");
@@ -351,12 +268,17 @@ class SqliteDatabase {
         VALUES (?, ?, ?, ?, ?, ?, ?, 0)
       `;
       const self = this;
-      this.db.run(q, [app.name, app.subtitle, app.description, app.category, app.pricingType, app.logoUrl, app.accessUrl], function (this: any, err: any) {
+      this.db.run(q, [app.name, app.subtitle, app.description, app.category, app.pricingType, app.logoUrl, app.accessUrl], (err: any) => {
         if (err) return reject(err);
-        const newId = this.lastID;
-        self.db.get("SELECT * FROM saas_apps WHERE id = ?", [newId], (gErr: any, row: any) => {
-          if (gErr) return reject(gErr);
-          resolve(row);
+        
+        self.db.get("SELECT last_insert_rowid() AS lastId", (rowIdErr: any, rowIdRes: any) => {
+          if (rowIdErr) return reject(rowIdErr);
+          const newId = rowIdRes ? rowIdRes.lastId : 0;
+          
+          self.db.get("SELECT * FROM saas_apps WHERE id = ?", [newId], (gErr: any, row: any) => {
+            if (gErr) return reject(gErr);
+            resolve(row);
+          });
         });
       });
     });
@@ -368,10 +290,8 @@ class SqliteDatabase {
       this.db.run(
         "UPDATE saas_apps SET launchCount = launchCount + 1 WHERE id = ?",
         [id],
-        function (this: any, err: any) {
+        (err: any) => {
           if (err) return reject(err);
-          if (this.changes === 0) return reject(new Error("App not found"));
-
           self.db.get("SELECT * FROM saas_apps WHERE id = ?", [id], (gErr: any, row: any) => {
             if (gErr) return reject(gErr);
             resolve(row);
@@ -383,9 +303,26 @@ class SqliteDatabase {
 
   async deleteApp(id: number): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      this.db.run("DELETE FROM saas_apps WHERE id = ?", [id], function (this: any, err: any) {
-        if (err) return reject(err);
-        resolve(this.changes > 0);
+      // First check if the application exists so we can return a proper boolean success
+      this.db.get("SELECT id FROM saas_apps WHERE id = ?", [id], (err: any, row: any) => {
+        if (err) {
+          console.error(`[SQLite DB] Error checking app existence for ID ${id}:`, err);
+          return reject(err);
+        }
+        if (!row) {
+          console.log(`[SQLite DB] Delete app mismatch: ID ${id} not found.`);
+          return resolve(false);
+        }
+        
+        // Exists, perform the standard DELETE command
+        this.db.run("DELETE FROM saas_apps WHERE id = ?", [id], (delErr: any) => {
+          if (delErr) {
+            console.error(`[SQLite DB] Error deleting app record ID ${id}:`, delErr);
+            return reject(delErr);
+          }
+          console.log(`[SQLite DB] Successfully deleted saas_apps record with ID: ${id}`);
+          resolve(true);
+        });
       });
     });
   }
@@ -406,12 +343,17 @@ class SqliteDatabase {
         VALUES (?, ?, ?, ?)
       `;
       const self = this;
-      this.db.run(q, [ad.title, ad.subtitle, ad.imageUrl, ad.linkUrl], function (this: any, err: any) {
+      this.db.run(q, [ad.title, ad.subtitle, ad.imageUrl, ad.linkUrl], (err: any) => {
         if (err) return reject(err);
-        const newId = this.lastID;
-        self.db.get("SELECT * FROM saas_ads WHERE id = ?", [newId], (gErr: any, row: any) => {
-          if (gErr) return reject(gErr);
-          resolve(row);
+        
+        self.db.get("SELECT last_insert_rowid() AS lastId", (rowIdErr: any, rowIdRes: any) => {
+          if (rowIdErr) return reject(rowIdErr);
+          const newId = rowIdRes ? rowIdRes.lastId : 0;
+          
+          self.db.get("SELECT * FROM saas_ads WHERE id = ?", [newId], (gErr: any, row: any) => {
+            if (gErr) return reject(gErr);
+            resolve(row);
+          });
         });
       });
     });
@@ -419,9 +361,25 @@ class SqliteDatabase {
 
   async deleteAd(id: number): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      this.db.run("DELETE FROM saas_ads WHERE id = ?", [id], function (this: any, err: any) {
-        if (err) return reject(err);
-        resolve(this.changes > 0);
+      // First check if the ad exists
+      this.db.get("SELECT id FROM saas_ads WHERE id = ?", [id], (err: any, row: any) => {
+        if (err) {
+          console.error(`[SQLite DB] Error checking ad existence for ID ${id}:`, err);
+          return reject(err);
+        }
+        if (!row) {
+          console.log(`[SQLite DB] Delete ad mismatch: ID ${id} not found.`);
+          return resolve(false);
+        }
+        
+        this.db.run("DELETE FROM saas_ads WHERE id = ?", [id], (delErr: any) => {
+          if (delErr) {
+            console.error(`[SQLite DB] Error executing DELETE FROM saas_ads for ID ${id}:`, delErr);
+            return reject(delErr);
+          }
+          console.log(`[SQLite DB] Successfully deleted saas_ads campaign record with ID: ${id}`);
+          resolve(true);
+        });
       });
     });
   }
