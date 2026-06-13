@@ -643,6 +643,12 @@ async function startServer() {
     
     app.use(vite.middlewares);
 
+    // Redirect common typos or trailing slashes to the canonical /admin path
+    app.get(["/adimin", "/adimin/", "/adimn", "/adimn/", "/admin/", "/Admin", "/Admin/", "/Adimin", "/Adimin/"], (req, res) => {
+      console.log(`[Router Redirect] Normalizing alias request to /admin for raw URL: ${req.originalUrl}`);
+      res.redirect(301, "/admin");
+    });
+
     // Serve admin workspace
     app.get("/admin", async (req, res, next) => {
       try {
@@ -683,6 +689,12 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     
     app.use(express.static(distPath, { index: false }));
+
+    // Redirect common typos or trailing slashes to the canonical /admin path
+    app.get(["/adimin", "/adimin/", "/adimn", "/adimn/", "/admin/", "/Admin", "/Admin/", "/Adimin", "/Adimin/"], (req, res) => {
+      console.log(`[Production Router Redirect] Normalizing alias request to /admin for raw URL: ${req.originalUrl}`);
+      res.redirect(301, "/admin");
+    });
 
     app.get("/admin", (req, res) => {
       res.sendFile(path.join(distPath, "admin.html"));
