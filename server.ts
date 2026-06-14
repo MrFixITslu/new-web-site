@@ -413,7 +413,7 @@ async function startServer() {
   await initDb();
 
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Middleware
   app.use(express.json());
@@ -643,14 +643,16 @@ async function startServer() {
     
     app.use(vite.middlewares);
 
-    // Redirect common typos or trailing slashes to the canonical /admin path
-    app.get(["/adimin", "/adimin/", "/adimn", "/adimn/", "/admin/", "/Admin", "/Admin/", "/Adimin", "/Adimin/"], (req, res) => {
-      console.log(`[Router Redirect] Normalizing alias request to /admin for raw URL: ${req.originalUrl}`);
-      res.redirect(301, "/admin");
-    });
+    const adminPaths = [
+      "/admin", "/admin/", 
+      "/adimin", "/adimin/", 
+      "/adimn", "/adimn/", 
+      "/Admin", "/Admin/", 
+      "/Adimin", "/Adimin/"
+    ];
 
-    // Serve admin workspace
-    app.get("/admin", async (req, res, next) => {
+    // Serve admin workspace directly for any matching paths without redirecting
+    app.get(adminPaths, async (req, res, next) => {
       try {
         const url = req.originalUrl;
         const htmlPath = path.resolve(process.cwd(), "admin.html");
@@ -690,13 +692,16 @@ async function startServer() {
     
     app.use(express.static(distPath, { index: false }));
 
-    // Redirect common typos or trailing slashes to the canonical /admin path
-    app.get(["/adimin", "/adimin/", "/adimn", "/adimn/", "/admin/", "/Admin", "/Admin/", "/Adimin", "/Adimin/"], (req, res) => {
-      console.log(`[Production Router Redirect] Normalizing alias request to /admin for raw URL: ${req.originalUrl}`);
-      res.redirect(301, "/admin");
-    });
+    const adminPathsProd = [
+      "/admin", "/admin/", 
+      "/adimin", "/adimin/", 
+      "/adimn", "/adimn/", 
+      "/Admin", "/Admin/", 
+      "/Adimin", "/Adimin/"
+    ];
 
-    app.get("/admin", (req, res) => {
+    app.get(adminPathsProd, (req, res) => {
+      console.log(`[Production Router] Serving admin.html directly for path: ${req.originalUrl}`);
       res.sendFile(path.join(distPath, "admin.html"));
     });
 
