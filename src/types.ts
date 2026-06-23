@@ -3,7 +3,7 @@ export interface SaaSApp {
   name: string;
   subtitle: string;
   description: string;
-  category: 'web' | 'desktop' | 'games';
+  category: 'web' | 'desktop' | 'games' | 'training';
   pricingType: 'free' | 'free_trial' | 'premium';
   logoUrl: string;
   accessUrl: string;
@@ -11,7 +11,7 @@ export interface SaaSApp {
   createdAt?: string;
 }
 
-export type CategoryFilter = 'all' | 'web' | 'desktop' | 'games';
+export type CategoryFilter = 'all' | 'web' | 'desktop' | 'games' | 'training';
 
 export interface AppStatistics {
   totalLaunches: number;
@@ -19,6 +19,7 @@ export interface AppStatistics {
   webAppsCount: number;
   desktopAppsCount: number;
   gamesAppsCount: number;
+  trainingAppsCount: number;
 }
 
 export interface SaaSAd {

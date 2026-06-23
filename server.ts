@@ -415,9 +415,8 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-  // Auto-detect production mode if dist/index.html exists or NODE_ENV is set to "production"
-  const distIndexExists = fs.existsSync(path.resolve(process.cwd(), "dist", "index.html"));
-  const isProduction = process.env.NODE_ENV === "production" || distIndexExists;
+  // Only enter production mode when NODE_ENV is set to "production" to avoid locking the development container to stale compiled builds from dist/
+  const isProduction = process.env.NODE_ENV === "production";
   const isDev = !isProduction;
 
   let viteInstance: any = null;
@@ -568,8 +567,8 @@ async function startServer() {
       return res.status(400).json({ error: "Missing required fields in body payload" });
     }
 
-    if (category !== "web" && category !== "desktop" && category !== "games") {
-      return res.status(400).json({ error: "Category must be 'web', 'desktop', or 'games'" });
+    if (category !== "web" && category !== "desktop" && category !== "games" && category !== "training") {
+      return res.status(400).json({ error: "Category must be 'web', 'desktop', 'games', or 'training'" });
     }
 
     if (pricingType !== "free" && pricingType !== "free_trial" && pricingType !== "premium") {

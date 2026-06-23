@@ -96,7 +96,7 @@ export default function AdminApp() {
   const [formName, setFormName] = useState("");
   const [formSubtitle, setFormSubtitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formCategory, setFormCategory] = useState<"web" | "desktop" | "games">("web");
+  const [formCategory, setFormCategory] = useState<"web" | "desktop" | "games" | "training">("web");
   const [formPricing, setFormPricing] = useState<"free" | "free_trial" | "premium">("free");
   const [formLogoType, setFormLogoType] = useState<"preset" | "url">("preset");
   const [formPresetIcon, setFormPresetIcon] = useState("lucide:ShieldCheck");
@@ -394,7 +394,8 @@ export default function AdminApp() {
     totalApps: apps.length,
     webAppsCount: apps.filter(a => a.category === "web").length,
     desktopAppsCount: apps.filter(a => a.category === "desktop").length,
-    gamesAppsCount: apps.filter(a => a.category === "games").length
+    gamesAppsCount: apps.filter(a => a.category === "games").length,
+    trainingAppsCount: apps.filter(a => a.category === "training").length
   };
 
   return (
@@ -528,7 +529,7 @@ export default function AdminApp() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                       <div className="bg-app-btn-sec/30 p-4 rounded-xl border border-app-border space-y-1">
                         <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Total SaaS Tools</span>
                         <span id="stat-total-apps" className="text-2xl font-mono font-bold text-app-text block">{stats.totalApps}</span>
@@ -544,6 +545,10 @@ export default function AdminApp() {
                       <div className="bg-app-btn-sec/30 p-4 rounded-xl border border-app-border space-y-1">
                         <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Game Platforms</span>
                         <span id="stat-games-apps" className="text-2xl font-mono font-bold text-app-text-sec block">{stats.gamesAppsCount}</span>
+                      </div>
+                      <div className="bg-app-btn-sec/30 p-4 rounded-xl border border-app-border space-y-1">
+                        <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Training Suites</span>
+                        <span id="stat-training-apps" className="text-2xl font-mono font-bold text-app-text-sec block">{stats.trainingAppsCount}</span>
                       </div>
                       <div className="bg-app-btn-sec/30 p-4 rounded-xl border border-app-border space-y-1">
                         <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Total Launches</span>
@@ -701,6 +706,7 @@ export default function AdminApp() {
                               <option className="bg-app-bg text-app-text" value="web">Web App</option>
                               <option className="bg-app-bg text-app-text" value="desktop">Desktop App</option>
                               <option className="bg-app-bg text-app-text" value="games">Game App</option>
+                              <option className="bg-app-bg text-app-text" value="training">Training</option>
                             </select>
                           </div>
 

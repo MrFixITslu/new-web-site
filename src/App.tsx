@@ -16,7 +16,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Megaphone,
-  Gamepad2
+  Gamepad2,
+  GraduationCap
 } from "lucide-react";
 import { SaaSApp, CategoryFilter, SaaSAd } from "./types";
 import { AppLogo } from "./components/AppLogo";
@@ -238,6 +239,18 @@ export default function App() {
                 <Gamepad2 className="w-4 h-4 stroke-[1.8]" />
                 Games
               </li>
+              <li 
+                id="filter-training"
+                onClick={() => setSelectedCategory("training")}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
+                  selectedCategory === "training"
+                    ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
+                    : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
+                }`}
+              >
+                <GraduationCap className="w-4 h-4 stroke-[1.8]" />
+                Training
+              </li>
             </ul>
           </div>
 
@@ -434,6 +447,8 @@ export default function App() {
                           badgeColor = "bg-blue-600/10 text-blue-500 font-medium border border-blue-500/20";
                         } else if (app.category === "games") {
                           badgeColor = "bg-amber-600/10 text-amber-500 font-medium border border-amber-500/20";
+                        } else if (app.category === "training") {
+                          badgeColor = "bg-emerald-600/10 text-emerald-500 font-medium border border-emerald-500/20";
                         }
 
                         return (
