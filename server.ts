@@ -415,8 +415,13 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+  // Auto-detect production mode if dist/index.html exists or NODE_ENV is set to "production"
+  const distIndexExists = fs.existsSync(path.resolve(process.cwd(), "dist", "index.html"));
+  const isProduction = process.env.NODE_ENV === "production" || distIndexExists;
+  const isDev = !isProduction;
+
   let viteInstance: any = null;
-  if (process.env.NODE_ENV !== "production") {
+  if (isDev) {
     console.log("[Vite] Initializing Vite dev server in middleware mode.");
     viteInstance = await createViteServer({
       server: { middlewareMode: true },
@@ -437,8 +442,8 @@ async function startServer() {
   ];
 
   app.get(adminPaths, async (req, res, next) => {
-    console.log(`[Admin Router] Serving admin.html for path: ${req.originalUrl} (Dev Mode: ${process.env.NODE_ENV !== "production"})`);
-    if (process.env.NODE_ENV !== "production" && viteInstance) {
+    console.log(`[Admin Router] Serving admin.html for path: ${req.originalUrl} (Dev Mode: ${isDev})`);
+    if (isDev && viteInstance) {
       try {
         const url = req.originalUrl;
         const htmlPath = path.resolve(process.cwd(), "admin.html");
@@ -674,7 +679,7 @@ async function startServer() {
   });
 
   // Vite development vs production serving logic
-  if (process.env.NODE_ENV !== "production") {
+  if (isDev) {
     if (viteInstance) {
       console.log("[Vite] Mounting Vite middleware in development mode.");
       app.use(viteInstance.middlewares);
