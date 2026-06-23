@@ -104,6 +104,7 @@ export default function AdminApp() {
   const [formAccessUrl, setFormAccessUrl] = useState("");
   const [adminNotification, setAdminNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [adNotification, setAdNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Auto-dismiss notifications after 6 seconds
   useEffect(() => {
@@ -128,7 +129,6 @@ export default function AdminApp() {
   const [adImageUrl, setAdImageUrl] = useState("");
   const [adLinkUrl, setAdLinkUrl] = useState("");
   const [adSubmitting, setAdSubmitting] = useState(false);
-  const [adNotification, setAdNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchAds = async () => {
     try {
