@@ -415,8 +415,10 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-  // Only enter production mode when NODE_ENV is set to "production" to avoid locking the development container to stale compiled builds from dist/
-  const isProduction = process.env.NODE_ENV === "production";
+  // Auto-detect production mode if NODE_ENV is set to "production", or we are running the compiled dist bundle, or server.ts is absent
+  const isCJS = typeof __filename !== "undefined" && (__filename.endsWith(".cjs") || __filename.includes("dist"));
+  const isProdFile = !!(process.argv[1] && (process.argv[1].endsWith(".cjs") || process.argv[1].includes("dist/")));
+  const isProduction = process.env.NODE_ENV === "production" || isCJS || isProdFile || !fs.existsSync(path.resolve(process.cwd(), "server.ts"));
   const isDev = !isProduction;
 
   let viteInstance: any = null;
