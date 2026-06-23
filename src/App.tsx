@@ -140,9 +140,9 @@ export default function App() {
   const filteredApps = apps.filter((app) => {
     const categoryMatches = selectedCategory === "all" || app.category === selectedCategory;
     const searchMatches = 
-      app.name.toLowerCase().includes(searchQuery) ||
-      app.subtitle.toLowerCase().includes(searchQuery) ||
-      app.description.toLowerCase().includes(searchQuery);
+      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.description.toLowerCase().includes(searchQuery.toLowerCase());
     return categoryMatches && searchMatches;
   });
 
@@ -385,7 +385,7 @@ export default function App() {
                     id="search-input"
                     type="text" 
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search tools, databases, frameworks, and extensions..." 
                     className="w-full bg-app-input border border-app-input-border rounded-full py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-1 focus:ring-app-border focus:border-app-border transition-all text-app-text placeholder:text-app-text-muted/60"
                   />
@@ -525,7 +525,7 @@ export default function App() {
                 <div className="status-dot"></div> Operational
               </div>
             </div>
-            <div className="flex items-center gap-6 hidden sm:flex">
+            <div className="hidden sm:flex items-center gap-6">
               <span>© 2026 VISION79 INC</span>
               <span>Secure Layer</span>
               <span>Terms API</span>

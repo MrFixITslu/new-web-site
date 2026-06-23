@@ -105,6 +105,19 @@ export default function AdminApp() {
   const [adminNotification, setAdminNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Auto-dismiss notifications after 6 seconds
+  useEffect(() => {
+    if (!adminNotification) return;
+    const t = setTimeout(() => setAdminNotification(null), 6000);
+    return () => clearTimeout(t);
+  }, [adminNotification]);
+
+  useEffect(() => {
+    if (!adNotification) return;
+    const t = setTimeout(() => setAdNotification(null), 6000);
+    return () => clearTimeout(t);
+  }, [adNotification]);
+
   // Carousel Ads Management state & handlers
   const [ads, setAds] = useState<SaaSAd[]>([]);
   const [adsLoading, setAdsLoading] = useState<boolean>(false);
@@ -835,7 +848,19 @@ export default function AdminApp() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-app-border/50">
-                            {apps.map((app) => (
+                            {loading ? (
+                              <tr>
+                                <td colSpan={4} className="py-10 text-center text-xs text-app-text-muted font-mono">
+                                  Loading registry...
+                                </td>
+                              </tr>
+                            ) : apps.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} className="py-10 text-center text-xs text-app-text-muted font-mono">
+                                  No applications in registry. Add your first SaaS product above.
+                                </td>
+                              </tr>
+                            ) : apps.map((app) => (
                               <tr key={app.id} className="hover:bg-app-btn-sec/20 transition-colors duration-150">
                                 <td className="py-3 flex items-center space-x-3">
                                   <div className="w-8 h-8 rounded-lg bg-app-btn-sec flex items-center justify-center border border-app-border shrink-0">
@@ -1040,7 +1065,7 @@ export default function AdminApp() {
                 <div className="status-dot"></div> Operational
               </div>
             </div>
-            <div className="flex items-center gap-6 hidden sm:flex">
+            <div className="hidden sm:flex items-center gap-6">
               <span>© 2026 VISION79 INC</span>
               <span>Secure Layer</span>
               <span>Terms API</span>
