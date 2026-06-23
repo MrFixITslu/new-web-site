@@ -470,7 +470,7 @@ export default function AdminApp() {
 
   // Compute stats for admin panel cards
   const stats: AppStatistics = {
-    totalLaunches: apps.reduce((accum, curr) => accum + curr.launchCount, 0),
+    totalLaunches: apps.reduce((accum, curr) => accum + (curr.launchCount || 0), 0),
     totalApps: apps.length,
     webAppsCount: apps.filter(a => a.category === "web").length,
     desktopAppsCount: apps.filter(a => a.category === "desktop").length,
@@ -1034,8 +1034,8 @@ export default function AdminApp() {
                                     <div className="flex items-center gap-1.5 font-mono text-[10px] truncate select-none">
                                       <span className="text-app-text-muted lowercase">{app.pricingType}</span>
                                       <span className="text-app-text-muted/50">•</span>
-                                      {app.price && app.price > 0 ? (
-                                        <span className="text-indigo-400 font-bold">USD ${app.price.toFixed(2)}</span>
+                                      {app.price !== undefined && app.price !== null && Number(app.price) > 0 ? (
+                                        <span className="text-indigo-400 font-bold">USD ${Number(app.price).toFixed(2)}</span>
                                       ) : (
                                         <span className="text-emerald-500 font-medium">Free</span>
                                       )}
@@ -1043,7 +1043,7 @@ export default function AdminApp() {
                                   </div>
                                 </td>
                                 <td className="py-3 font-mono text-app-text-sec">
-                                  {app.launchCount.toLocaleString()}
+                                  {(app.launchCount !== undefined && app.launchCount !== null ? app.launchCount : 0).toLocaleString()}
                                 </td>
                                 <td className="py-3">
                                   <span className="text-[10px] px-2 py-0.5 rounded bg-app-btn-sec border border-app-border text-app-text-sec uppercase">

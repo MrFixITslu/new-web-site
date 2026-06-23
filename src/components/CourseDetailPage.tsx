@@ -48,14 +48,19 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
   const [activeLecture, setActiveLecture] = useState<Lecture | null>(null);
   
   // Checking/resetting purchase state based on price/type
-  const isPaid = (course.price && course.price > 0) || course.pricingType === "premium";
-  const displayPrice = course.price !== undefined ? course.price : 94.99;
+  const displayPrice = course.price !== undefined && course.price !== null ? Number(course.price) : 94.99;
+  const isPaid = displayPrice > 0 || course.pricingType === "premium";
 
   useEffect(() => {
     if (!isPaid) {
       setIsEnrolled(true);
     } else {
-      const stored = localStorage.getItem(`vision79-enrolled-${course.id}`);
+      let stored = null;
+      try {
+        stored = localStorage.getItem(`vision79-enrolled-${course.id}`);
+      } catch (e) {
+        console.warn("Blocked accessing localStorage:", e);
+      }
       if (stored === "true") {
         setIsEnrolled(true);
       }
@@ -74,7 +79,12 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
 
   // Notes state
   const [studentNote, setStudentNote] = useState<string>(() => {
-    return localStorage.getItem(`vision79-note-${course.id}`) || "";
+    try {
+      return localStorage.getItem(`vision79-note-${course.id}`) || "";
+    } catch (e) {
+      console.warn("Blocked accessing localStorage:", e);
+      return "";
+    }
   });
 
   // QA State
@@ -217,13 +227,21 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
       setIsPaying(false);
       setPaySuccess(true);
       setIsEnrolled(true);
-      localStorage.setItem(`vision79-enrolled-${course.id}`, "true");
+      try {
+        localStorage.setItem(`vision79-enrolled-${course.id}`, "true");
+      } catch (e) {
+        console.warn("Blocked writing to localStorage:", e);
+      }
     }, 2200);
   };
 
   const saveNote = (txt: string) => {
     setStudentNote(txt);
-    localStorage.setItem(`vision79-note-${course.id}`, txt);
+    try {
+      localStorage.setItem(`vision79-note-${course.id}`, txt);
+    } catch (e) {
+      console.warn("Blocked writing to localStorage:", e);
+    }
   };
 
   const submitQuestion = (e: React.FormEvent) => {

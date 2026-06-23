@@ -25,9 +25,10 @@ export const PRESET_ICONS = [
   { id: "lucide:Globe", label: "Universal Web (Globe)", icon: Globe, color: "text-blue-400" }
 ];
 
-export function AppLogo({ logoUrl }: { logoUrl: string }) {
-  if (logoUrl.startsWith("lucide:")) {
-    const iconName = logoUrl.replace("lucide:", "");
+export function AppLogo({ logoUrl }: { logoUrl?: string }) {
+  const safeLogoUrl = logoUrl || "";
+  if (safeLogoUrl.startsWith("lucide:")) {
+    const iconName = safeLogoUrl.replace("lucide:", "");
     const baseClass = "w-5 h-5 stroke-[1.8]";
     switch (iconName) {
       case "ShieldCheck": return <ShieldCheck className={`${baseClass} text-emerald-400`} />;
@@ -47,7 +48,7 @@ export function AppLogo({ logoUrl }: { logoUrl: string }) {
   return (
     <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 flex items-center justify-center">
       <img 
-        src={logoUrl} 
+        src={safeLogoUrl} 
         alt="SaaS Logo" 
         className="w-full h-full object-cover"
         referrerPolicy="no-referrer"

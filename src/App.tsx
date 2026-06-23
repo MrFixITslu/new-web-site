@@ -52,11 +52,17 @@ export default function App() {
 
   // Theme Management
   const [theme, setTheme] = useState<"light" | "dark">(() => {
-    return (localStorage.getItem("vision79-theme") as "light" | "dark") || "dark";
+    try {
+      return (localStorage.getItem("vision79-theme") as "light" | "dark") || "dark";
+    } catch (e) {
+      return "dark";
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem("vision79-theme", theme);
+    try {
+      localStorage.setItem("vision79-theme", theme);
+    } catch (e) {}
     const root = document.documentElement;
     if (theme === "dark") {
       root.classList.add("dark");
@@ -150,11 +156,13 @@ export default function App() {
 
   // Filters application dataset logic
   const filteredApps = apps.filter((app) => {
+    if (!app) return false;
     const categoryMatches = selectedCategory === "all" || app.category === selectedCategory;
+    const q = searchQuery.toLowerCase();
     const searchMatches = 
-      app.name.toLowerCase().includes(searchQuery) ||
-      app.subtitle.toLowerCase().includes(searchQuery) ||
-      app.description.toLowerCase().includes(searchQuery);
+      (app.name || "").toLowerCase().includes(q) ||
+      (app.subtitle || "").toLowerCase().includes(q) ||
+      (app.description || "").toLowerCase().includes(q);
     return categoryMatches && searchMatches;
   });
 
@@ -495,11 +503,12 @@ export default function App() {
                         const isWeb = app.category === "web";
                         const isCourse = app.category === "courses";
                         
+                        const priceNum = app.price !== undefined && app.price !== null ? Number(app.price) : 0;
                         const pricingText = 
-                          isCourse ? (app.price && app.price > 0 ? `$${app.price.toFixed(2)}` : "Free Masterclass") :
+                          isCourse ? (priceNum > 0 ? `$${priceNum.toFixed(2)}` : "Free Masterclass") :
                           app.pricingType === "free" ? "Free" : 
-                          app.pricingType === "free_trial" ? (app.price && app.price > 0 ? `Trial / $${app.price.toFixed(2)}` : "Free Trial") : 
-                          (app.price && app.price > 0 ? `$${app.price.toFixed(2)}` : "Subscription");
+                          app.pricingType === "free_trial" ? (priceNum > 0 ? `Trial / $${priceNum.toFixed(2)}` : "Free Trial") : 
+                          (priceNum > 0 ? `$${priceNum.toFixed(2)}` : "Subscription");
 
                         let badgeColor = "bg-app-btn-sec text-app-text-sec border border-app-border";
                         if (app.category === "desktop") {
@@ -571,7 +580,7 @@ export default function App() {
                             {/* Footer count action button block */}
                             <div className="flex items-center justify-between pt-1.5 border-t border-app-border/40 mt-2">
                               <div className="flex items-center space-x-1 font-mono text-[10px] text-app-text-sec">
-                                <span className="font-semibold">{app.launchCount.toLocaleString()}</span>
+                                <span className="font-semibold">{(app.launchCount !== undefined && app.launchCount !== null ? app.launchCount : 0).toLocaleString()}</span>
                                 <span className="text-app-text-muted font-normal">
                                   {isCourse ? "Students" : isWeb ? "Launches" : "Downloads"}
                                 </span>
