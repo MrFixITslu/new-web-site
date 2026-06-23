@@ -49,19 +49,6 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
   // Expanded SLA sections state
   const [showSlaMatrix, setShowSlaMatrix] = useState<boolean>(true);
 
-  // States for the Interactive Cost Estimator
-  const [estimatorTier, setEstimatorTier] = useState<"essential" | "professional" | "enterprise">("professional");
-  const [userCount, setUserCount] = useState<number>(15);
-  const [includeBackupAddon, setIncludeBackupAddon] = useState<boolean>(true);
-  const [includeMfaAddon, setIncludeMfaAddon] = useState<boolean>(false);
-  const [includeComplianceAddon, setIncludeComplianceAddon] = useState<boolean>(false);
-  const [backupStorageGb, setBackupStorageGb] = useState<number>(500); // Storage selection in GB
-
-  // Hourly Rate and Project Services Info state
-  const [activeHourlyCalculator, setActiveHourlyCalculator] = useState<boolean>(false);
-  const [calcHours, setCalcHours] = useState<number>(8);
-  const [calcRateType, setCalcRateType] = useState<"standard" | "emergency">("standard");
-
   // Constants based on fire lion MSP service catalogs
   const tierPricing = {
     essential: { xcd: 120, usd: 120 / 2.70 },
@@ -138,68 +125,6 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
     }
     return `EC$ ${xcdAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
-
-  // Estimator Calculations
-  const estimateBreakdowns = useMemo(() => {
-    const baseRate = estimatorTier === "essential" 
-      ? tierPricing.essential.xcd 
-      : estimatorTier === "professional" 
-        ? tierPricing.professional.xcd 
-        : tierPricing.enterprise.xcd;
-    
-    const baseTotalXcd = baseRate * userCount;
-    
-    // Add-on components
-    let backupTotalXcd = 0;
-    if (includeBackupAddon) {
-      // EC$ 95 / month per 100 GB
-      backupTotalXcd = Math.ceil(backupStorageGb / 100) * 95;
-    }
-
-    let mfaTotalXcd = 0;
-    if (includeMfaAddon) {
-      // Flat setup of EC$ 35 per user / month
-      mfaTotalXcd = userCount * 35;
-    }
-
-    let complianceTotalXcd = 0;
-    if (includeComplianceAddon) {
-      // EC$ 180 / Month flat audit retainer
-      complianceTotalXcd = 180;
-    }
-
-    const subtotalXcd = baseTotalXcd + backupTotalXcd + mfaTotalXcd + complianceTotalXcd;
-    const vatRate = 0.125; // Saint Lucia standard 12.5% VAT
-    const vatXcd = includeVat ? subtotalXcd * vatRate : 0;
-    const grandTotalXcd = subtotalXcd + vatXcd;
-
-    return {
-      baseRate,
-      baseTotalXcd,
-      backupTotalXcd,
-      mfaTotalXcd,
-      complianceTotalXcd,
-      subtotalXcd,
-      vatXcd,
-      grandTotalXcd
-    };
-  }, [estimatorTier, userCount, includeBackupAddon, backupStorageGb, includeMfaAddon, includeComplianceAddon, includeVat]);
-
-  // Break-Fix calculations
-  const hourlyEstimate = useMemo(() => {
-    // EC$ 150/hr Standard, EC$ 250/hr Emergency
-    const hourlyRateXcd = calcRateType === "standard" ? 150 : 250;
-    const subtotalXcd = hourlyRateXcd * calcHours;
-    const vatXcd = includeVat ? subtotalXcd * 0.125 : 0;
-    const grandTotalXcd = subtotalXcd + vatXcd;
-
-    return {
-      hourlyRateXcd,
-      subtotalXcd,
-      vatXcd,
-      grandTotalXcd
-    };
-  }, [calcHours, calcRateType, includeVat]);
 
   return (
     <div id="services-pricing-layout" className="w-full flex flex-col min-h-screen text-app-text antialiased">
@@ -348,20 +273,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
                     </div>
                   </div>
 
-                  <div className="pt-6 mt-6 border-t border-app-border/20">
-                    <button
-                      onClick={() => {
-                        setEstimatorTier(tier.id as any);
-                        const calculatorTarget = document.getElementById("interactive-estimator");
-                        if (calculatorTarget) {
-                          calculatorTarget.scrollIntoView({ behavior: "smooth" });
-                        }
-                      }}
-                      className="w-full py-2.5 bg-app-btn-sec border border-app-border text-app-text hover:bg-app-btn-sec/80 text-xs rounded-xl font-mono transition duration-200 cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      Select For Estimator <Calculator className="w-3.5 h-3.5 text-indigo-400" />
-                    </button>
-                  </div>
+                  {/* Removed select for estimator buttons */}
                 </div>
               );
             })}
@@ -369,18 +281,18 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
         </div>
 
         {/* SECTION 2: AD-HOC HOURLY AND PROJECT SERVICES */}
-        <div id="project-break-fix" className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch pt-2">
+        <div id="project-break-fix" className="pt-2">
           
           {/* HOURLY & PROJECT EXPLAINER */}
-          <div className="p-6 sm:p-8 rounded-2xl border border-app-border bg-app-aside-bg/15 space-y-6 flex flex-col justify-between">
+          <div className="p-6 sm:p-8 rounded-2xl border border-app-border bg-app-aside-bg/15 space-y-6">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="p-1 px-2 text-[9px] font-mono uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-md font-bold">Project Services Catalog</span>
+                <span className="p-1 px-2 text-[9px] font-mono uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-md font-bold font-semibold">Project Services Catalog</span>
                 <span className="text-[10px] text-app-text-muted font-mono">Saint Lucia On-Site & Remote dispatch</span>
               </div>
               
-              <h2 className="text-xl sm:text-2xl font-bold font-dislay tracking-tight">Project Work & Out-of-Scope Rates</h2>
-              <p className="text-xs text-app-text-sec leading-relaxed font-light">
+              <h2 className="text-xl sm:text-2xl font-bold font-display tracking-tight">2. Project Work & Out-of-Scope Rates</h2>
+              <p className="text-xs sm:text-sm text-app-text-sec leading-relaxed max-w-3xl">
                 For non-retaining clients or massive scale-out procedures like full hybrid-cloud active directory migrations, workspace transitions, and localized network deployments.
               </p>
 
@@ -424,7 +336,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
             </div>
 
             <div className="border-t border-app-border/40 pt-5 space-y-1 bg-zinc-950/20 p-4 rounded-xl border border-app-border/50">
-              <span className="text-[9px] font-mono uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded w-max select-none block font-extrabold tracking-wider">
+              <span className="text-[9px] font-mono uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded w-max select-none block font-semibold tracking-wider">
                 Note on invoicing currency
               </span>
               <p className="text-[10px] text-app-text-sec leading-snug">
@@ -432,337 +344,9 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
               </p>
             </div>
           </div>
-
-          {/* DYNAMIC ACCORDION HOURLY INTERACTIVE CALCULATOR */}
-          <div className="p-6 sm:p-8 rounded-2xl border border-dashed border-app-border bg-app-aside-bg/5 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Calculator className="w-4 h-4 text-amber-500" />
-                <span className="text-[10px] font-mono uppercase text-app-text-muted font-semibold tracking-wide">Dynamic Dispatch Calculator</span>
-              </div>
-
-              <h2 className="text-xl font-bold font-display">Ad-Hoc Hourly Job Estimator</h2>
-              <p className="text-xs text-app-text-sec font-light">
-                Select your required troubleshooting hours and rates to estimate in-scope dispatch bounds.
-              </p>
-
-              <div className="space-y-4 pt-2">
-                {/* Hours Slider Input */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-app-text-sec uppercase">Troubleshooting Duration:</span>
-                    <span className="font-extrabold text-app-text">{calcHours} Hours</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={40}
-                    value={calcHours}
-                    onChange={(e) => setCalcHours(Number(e.target.value))}
-                    className="w-full h-1.5 bg-app-btn-sec border border-app-border rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                  />
-                  <div className="flex justify-between text-[9px] text-app-text-muted font-mono">
-                    <span>1 hr</span>
-                    <span>10 hrs</span>
-                    <span>20 hrs</span>
-                    <span>30 hrs</span>
-                    <span>40 hrs (Full week)</span>
-                  </div>
-                </div>
-
-                {/* Rate type selection buttons */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-mono uppercase text-app-text-sec block">Response Category rate</label>
-                  <div className="grid grid-cols-2 gap-3.5">
-                    <button
-                      onClick={() => setCalcRateType("standard")}
-                      className={`py-3 px-4 border rounded-xl text-xs font-mono transition duration-300 cursor-pointer flex flex-col items-center justify-center gap-1 leading-none ${
-                        calcRateType === "standard" 
-                          ? "bg-indigo-600 border-indigo-500 text-white font-bold" 
-                          : "bg-app-btn-sec border-app-border text-app-text hover:bg-app-btn-sec/70"
-                      }`}
-                    >
-                      <span>Standard Hours</span>
-                      <span className="text-[9px] opacity-75 font-normal mt-0.5">{getDisplayPrice(150)}/hr</span>
-                    </button>
-
-                    <button
-                      onClick={() => setCalcRateType("emergency")}
-                      className={`py-3 px-4 border rounded-xl text-xs font-mono transition duration-300 cursor-pointer flex flex-col items-center justify-center gap-1 leading-none ${
-                        calcRateType === "emergency" 
-                          ? "bg-amber-600 border-amber-500 text-white font-bold" 
-                          : "bg-app-btn-sec border-app-border text-app-text hover:bg-app-btn-sec/70"
-                      }`}
-                    >
-                      <span>Emergency Work</span>
-                      <span className="text-[9px] opacity-75 font-normal mt-0.5">{getDisplayPrice(250)}/hr</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Price Estimator output */}
-            <div className="border border-app-border bg-app-btn-sec/15 p-4 rounded-xl mt-6 space-y-3 font-mono">
-              <span className="text-[9px] font-mono text-app-text-muted uppercase">Dispatch Cost Summary</span>
-              <div className="space-y-1.5 text-xs text-app-text-sec pt-1">
-                <div className="flex justify-between">
-                  <span>Ad-hoc Base hourly total:</span>
-                  <span className="text-app-text font-bold">{getDisplayPrice(hourlyEstimate.subtotalXcd)}</span>
-                </div>
-                {includeVat && (
-                  <div className="flex justify-between text-[10px] text-emerald-400">
-                    <span>12.5% St. Lucia VAT:</span>
-                    <span>+{getDisplayPrice(hourlyEstimate.vatXcd)}</span>
-                  </div>
-                )}
-                <div className="border-t border-app-border/40 my-2 pt-2 flex justify-between text-base font-extrabold text-app-text leading-none">
-                  <span>Grand Estimate:</span>
-                  <span className="text-indigo-400">{getDisplayPrice(hourlyEstimate.grandTotalXcd)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
 
-        {/* SECTION 3: INTERACTIVE CONTRACT ESTIMATOR BUILDER */}
-        <div id="interactive-estimator" className="bg-app-aside-bg/40 border border-indigo-500/20 p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-indigo-500 to-violet-500" />
-          
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-400">
-              <Layers className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold">Fire Lion Interactive Calculator</span>
-              <h2 className="text-xl sm:text-2xl font-bold font-display mt-0.5">Custom Retainer Plan Architect</h2>
-            </div>
-          </div>
-
-          <p className="text-xs sm:text-sm text-app-text-sec max-w-3xl leading-relaxed">
-            Architect your ideal ICT support package. Select your operations base tier, input your company's active device/user count, and select custom SLA add-ons below for real-time itemized contract estimates.
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
-            
-            {/* LEFT INPUT CONTROLS Column - 7/12 */}
-            <div className="lg:col-span-7 space-y-6">
-              
-              {/* Selector 1: Tier Selector */}
-              <div className="space-y-2">
-                <label className="text-[10px] font-mono uppercase text-app-text-sec block">Base Plan operations Tier</label>
-                <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                  {(["essential", "professional", "enterprise"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setEstimatorTier(t)}
-                      className={`p-3 border rounded-xl text-xs font-mono transition-all duration-200 cursor-pointer text-center leading-tight ${
-                        estimatorTier === t 
-                          ? "bg-indigo-600 border-indigo-500 text-white font-bold shadow-md scale-102" 
-                          : "bg-app-btn-sec/50 border-app-border text-app-text hover:bg-app-btn-sec hover:border-app-text/30"
-                      }`}
-                    >
-                      <span className="block truncate capitalize">{t}</span>
-                      <span className="block text-[10px] opacity-75 font-normal mt-1">
-                        {currency === "USD" 
-                          ? `$${(tierPricing[t].xcd / XCD_TO_USD_PEG).toFixed(0)}` 
-                          : `EC$ ${tierPricing[t].xcd}`
-                        }/mo
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selector 2: User count */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-mono">
-                  <span className="text-app-text-sec uppercase">SME Endpoint / User count:</span>
-                  <span className="font-extrabold text-app-text">{userCount} Active Users</span>
-                </div>
-                <input
-                  type="range"
-                  min={5}
-                  max={150}
-                  step={5}
-                  value={userCount}
-                  onChange={(e) => setUserCount(Number(e.target.value))}
-                  className="w-full h-1.5 bg-app-btn-sec border border-app-border rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                />
-                <div className="flex justify-between text-[9px] text-app-text-muted font-mono">
-                  <span>5 Staff Members</span>
-                  <span>50 Users</span>
-                  <span>100 Users</span>
-                  <span>150 (Enterprise Cap)</span>
-                </div>
-              </div>
-
-              {/* Selector 3: Interactive additions Toggles */}
-              <div className="space-y-3 pt-2">
-                <label className="text-[10px] font-mono uppercase text-app-text-sec block">Custom SLA Retainer Additions</label>
-                
-                <div className="space-y-2.5">
-                  {/* Backup verification add-on */}
-                  <div className="p-3.5 rounded-xl border border-app-border bg-app-btn-sec/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <input 
-                        type="checkbox" 
-                        id="addon-backup"
-                        checked={includeBackupAddon} 
-                        onChange={(e) => setIncludeBackupAddon(e.target.checked)}
-                        className="w-4 h-4 rounded border-app-border text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer"
-                      />
-                      <div className="space-y-0.5">
-                        <label htmlFor="addon-backup" className="text-xs font-bold text-app-text cursor-pointer select-none">Daily Managed Hybrid Backup Storage</label>
-                        <p className="text-[10px] text-app-text-muted leading-relaxed">Secure data snapshots verifying continuous redundancy blocks.</p>
-                      </div>
-                    </div>
-                    
-                    {includeBackupAddon && (
-                      <div className="flex items-center gap-2 font-mono ml-7 sm:ml-0">
-                        <span className="text-[10px] text-app-text-sec">Limit:</span>
-                        <div className="flex items-center gap-1.5 border border-app-border bg-app-bg px-1.5 py-0.5 rounded">
-                          {[100, 250, 500, 1000].map((gb) => (
-                            <button
-                              key={gb}
-                              onClick={() => setBackupStorageGb(gb)}
-                              className={`px-1 text-[9px] rounded font-bold cursor-pointer transition ${backupStorageGb === gb ? "bg-indigo-600 text-white" : "text-app-text-muted hover:text-app-text"}`}
-                            >
-                              {gb >= 1000 ? "1TB" : `${gb}GB`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* MFA setup */}
-                  <div className="p-3.5 rounded-xl border border-app-border bg-app-btn-sec/10 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <input 
-                        type="checkbox" 
-                        id="addon-mfa"
-                        checked={includeMfaAddon} 
-                        onChange={(e) => setIncludeMfaAddon(e.target.checked)}
-                        className="w-4 h-4 rounded border-app-border text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer"
-                      />
-                      <div className="space-y-0.5">
-                        <label htmlFor="addon-mfa" className="text-xs font-bold text-app-text cursor-pointer select-none">MFA Setup & Maintenance Protocol</label>
-                        <p className="text-[10px] text-app-text-muted leading-relaxed">Continuous hardware key verification and remote lock bypass.</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-app-text-sec shrink-0">{getDisplayPrice(35)}/user</span>
-                  </div>
-
-                  {/* Caribbean Compliance retention check */}
-                  <div className="p-3.5 rounded-xl border border-app-border bg-app-btn-sec/10 flex items-center justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <input 
-                        type="checkbox" 
-                        id="addon-compliance"
-                        checked={includeComplianceAddon} 
-                        onChange={(e) => setIncludeComplianceAddon(e.target.checked)}
-                        className="w-4 h-4 rounded border-app-border text-indigo-600 focus:ring-indigo-500 mt-0.5 cursor-pointer"
-                      />
-                      <div className="space-y-0.5">
-                        <label htmlFor="addon-compliance" className="text-xs font-bold text-app-text cursor-pointer select-none">CARICOM GDPR / Local Compliance Audits</label>
-                        <p className="text-[10px] text-app-text-muted leading-relaxed">Bi-monthly security logging matches to regional Caribbean privacy laws.</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-mono font-bold text-app-text-sec shrink-0">{getDisplayPrice(180)}/mo</span>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* RIGHT SUMMARY ESTIMATE Column - 5/12 */}
-            <div className="lg:col-span-5 flex-1 flex flex-col justify-between">
-              <div className="p-5 sm:p-6 rounded-2xl bg-zinc-950/40 border border-indigo-500/25 space-y-4">
-                <span className="text-[10px] font-mono font-bold tracking-widest text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded block w-max select-none">
-                  Estimate Recapitulation
-                </span>
-
-                <div className="space-y-3.5 divide-y divide-app-border/30 text-xs font-mono pt-1 text-app-text-sec">
-                  {/* Base plan estimate row */}
-                  <div className="flex justify-between py-1 border-transparent">
-                    <span className="text-app-text-muted capitalize">{estimatorTier} Plan ({userCount} staff):</span>
-                    <span className="text-app-text font-bold">{getDisplayPrice(estimateBreakdowns.baseTotalXcd)}</span>
-                  </div>
-
-                  {/* Backup cost row */}
-                  {includeBackupAddon && (
-                    <div className="flex justify-between py-2 pt-2 border-app-border/20">
-                      <span className="text-app-text-muted">Backup storage ({backupStorageGb}GB):</span>
-                      <span className="text-app-text">{getDisplayPrice(estimateBreakdowns.backupTotalXcd)}</span>
-                    </div>
-                  )}
-
-                  {/* MFA setup row */}
-                  {includeMfaAddon && (
-                    <div className="flex justify-between py-2 border-app-border/20">
-                      <span className="text-app-text-muted">MFA support setup ({userCount} staff):</span>
-                      <span className="text-app-text">{getDisplayPrice(estimateBreakdowns.mfaTotalXcd)}</span>
-                    </div>
-                  )}
-
-                  {/* Compliance audit row */}
-                  {includeComplianceAddon && (
-                    <div className="flex justify-between py-2 border-app-border/20">
-                      <span className="text-app-text-muted">CARICOM Law Auditing retainer:</span>
-                      <span className="text-app-text">{getDisplayPrice(estimateBreakdowns.complianceTotalXcd)}</span>
-                    </div>
-                  )}
-
-                  {/* Subtotal row */}
-                  <div className="flex justify-between py-2 pt-2 border-app-border/20 text-xs font-bold font-mono">
-                    <span className="text-app-text-sec text-[10px] uppercase">Plan Net Subtotal:</span>
-                    <span className="text-app-text">{getDisplayPrice(estimateBreakdowns.subtotalXcd)}</span>
-                  </div>
-
-                  {/* VAT row */}
-                  {includeVat && (
-                    <div className="flex justify-between py-2 border-app-border/20 text-emerald-400 font-bold">
-                      <span className="text-[10px] uppercase">12.5% Saint Lucia VAT:</span>
-                      <span>+{getDisplayPrice(estimateBreakdowns.vatXcd)}</span>
-                    </div>
-                  )}
-
-                  {/* Contract Term info row */}
-                  <div className="flex justify-between py-2 border-app-border/20 text-[10px]">
-                    <span className="text-app-text-muted">Contract commitment term:</span>
-                    <span className="font-extrabold text-amber-500 uppercase">
-                      {estimatorTier === "essential" ? "3 Months" : estimatorTier === "professional" ? "6 Months" : "12 Months"}
-                    </span>
-                  </div>
-
-                  {/* Grand total large scale block */}
-                  <div className="border-t-2 border-indigo-500/30 pt-4 flex flex-col gap-1 text-center border-dashed">
-                    <span className="text-[10px] text-app-text-muted uppercase">Estimated monthly rate</span>
-                    <span className="text-3xl font-extrabold text-indigo-400 tracking-tight leading-none py-1 block">
-                      {getDisplayPrice(estimateBreakdowns.grandTotalXcd)}
-                    </span>
-                    <p className="text-[9px] text-app-text-muted leading-tight font-normal pt-1 italic">
-                      Estimate created automatically in reference. Final pricing can vary based on custom network switches scan count.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-start gap-2.5 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10 mt-4">
-                <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-app-text-sec leading-normal font-mono">
-                  <strong>Standard SLA escalation criteria is applied.</strong> Emergency response is capped under Saint Lucian registered business operating parameters. Contact sales desk directly to activate SLA contracts.
-                </p>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        {/* SECTION 4: DETAILED RESPONSIVE SLA TARGET MATRIX TABLE */}
+        {/* SECTION 3: DETAILED RESPONSIVE SLA TARGET MATRIX TABLE */}
         <div className="border border-app-border rounded-2xl bg-app-aside-bg/15 overflow-hidden">
           <button
             onClick={() => setShowSlaMatrix(!showSlaMatrix)}
@@ -770,7 +354,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
           >
             <div className="flex items-center gap-2.5">
               <ShieldCheck className="w-5 h-5 text-indigo-400" />
-              <span className="font-display font-bold">4. SLA Priority Matrix & Response/Resolution Target SLA schedules</span>
+              <span className="font-display font-bold">3. SLA Priority Matrix & Response/Resolution Target SLA schedules</span>
             </div>
             {showSlaMatrix ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
@@ -854,7 +438,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
             </div>
             <div>
               <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold">Product Deployment & Hosting</span>
-              <h2 className="text-xl sm:text-2xl font-bold font-display mt-0.5">SaaS Applications Pricing Structure</h2>
+              <h2 className="text-xl sm:text-2xl font-bold font-display mt-0.5">4. SaaS Applications Pricing Structure</h2>
             </div>
           </div>
 

@@ -143,10 +143,22 @@ class JsonDatabase {
   read(): any[] {
     try {
       const content = fs.readFileSync(JSON_DB_FILE, "utf-8");
-      return JSON.parse(content);
+      const list = JSON.parse(content);
+      let updated = false;
+      const cleanList = list.map((item: any, i: number) => {
+        if (item.id === undefined) {
+          item.id = i + 1;
+          updated = true;
+        }
+        return item;
+      });
+      if (updated) {
+        this.write(cleanList);
+      }
+      return cleanList;
     } catch (e) {
       console.error("[JSON Database] Read error, resetting:", e);
-      return SEED_APPS;
+      return SEED_APPS.map((item, i) => ({ ...item, id: i + 1 }));
     }
   }
 
@@ -161,13 +173,25 @@ class JsonDatabase {
   readAds(): any[] {
     try {
       if (!fs.existsSync(JSON_ADS_FILE)) {
-        return SEED_ADS;
+        return SEED_ADS.map((ad, i) => ({ ...ad, id: i + 1 }));
       }
       const content = fs.readFileSync(JSON_ADS_FILE, "utf-8");
-      return JSON.parse(content);
+      const list = JSON.parse(content);
+      let updated = false;
+      const cleanList = list.map((ad: any, i: number) => {
+        if (ad.id === undefined) {
+          ad.id = i + 1;
+          updated = true;
+        }
+        return ad;
+      });
+      if (updated) {
+        this.writeAds(cleanList);
+      }
+      return cleanList;
     } catch (e) {
       console.error("[JSON Database] Ads Read error, resetting:", e);
-      return SEED_ADS;
+      return SEED_ADS.map((ad, i) => ({ ...ad, id: i + 1 }));
     }
   }
 
