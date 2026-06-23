@@ -1,0 +1,11 @@
+services:
+  website:
+    container_name: new-web-site
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3030:3000"
+    volumes:
+      - ./vision79_saas.db:/app/vision79_saas.db
+      - ./vision79_saas.json:/app/vision79_saas.json
+      - ./vision79_ads.json:/app/vision79_ads.json
