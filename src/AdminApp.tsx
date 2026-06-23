@@ -13,7 +13,9 @@ import {
   Sun,
   Moon,
   Image as ImageIcon,
-  Megaphone
+  Megaphone,
+  Edit,
+  X
 } from "lucide-react";
 import { SaaSApp, AppStatistics, SaaSAd } from "./types";
 import { AppLogo, PRESET_ICONS } from "./components/AppLogo";
@@ -112,6 +114,57 @@ export default function AdminApp() {
 
   const [adminNotification, setAdminNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editingAppId, setEditingAppId] = useState<number | null>(null);
+
+  const handleStartEdit = (app: SaaSApp) => {
+    setEditingAppId(app.id);
+    setFormName(app.name || "");
+    setFormSubtitle(app.subtitle || "");
+    setFormDescription(app.description || "");
+    setFormCategory(app.category || "web");
+    setFormPricing(app.pricingType || "free");
+    setFormAccessUrl(app.accessUrl || "");
+    setFormPrice(app.price !== undefined ? app.price.toString() : "49.99");
+    setFormInstructor(app.instructor || "");
+    setFormDuration(app.duration || "12.5 hrs");
+    setFormLessonsCount(app.lessonsCount !== undefined ? app.lessonsCount.toString() : "24");
+    setFormRating(app.rating !== undefined ? app.rating.toString() : "4.8");
+    
+    if (app.logoUrl && app.logoUrl.startsWith("lucide:")) {
+      setFormLogoType("preset");
+      setFormPresetIcon(app.logoUrl);
+      setFormCustomUrl("");
+    } else {
+      setFormLogoType("url");
+      setFormCustomUrl(app.logoUrl || "");
+      setFormPresetIcon("lucide:ShieldCheck");
+    }
+    
+    // Scroll smoothly to the edit form
+    const formElement = document.getElementById("add-app-form");
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAppId(null);
+    setFormName("");
+    setFormSubtitle("");
+    setFormDescription("");
+    setFormCategory("web");
+    setFormPricing("free");
+    setFormLogoType("preset");
+    setFormPresetIcon("lucide:ShieldCheck");
+    setFormCustomUrl("");
+    setFormAccessUrl("");
+    setFormPrice("49.99");
+    setFormInstructor("");
+    setFormDuration("12.5 hrs");
+    setFormLessonsCount("24");
+    setFormRating("4.8");
+    setAdminNotification(null);
+  };
 
   // Carousel Ads Management state & handlers
   const [ads, setAds] = useState<SaaSAd[]>([]);
@@ -309,7 +362,7 @@ export default function AdminApp() {
     }
   }, [adminToken, apps.length]);
 
-  // Handle Admin App Addition
+  // Handle Admin App Addition or Update
   const handleCreateApp = async (e: any) => {
     e.preventDefault();
     setAdminNotification(null);
@@ -323,8 +376,12 @@ export default function AdminApp() {
     try {
       setSubmitting(true);
       const token = adminToken || safeSessionStorage.getItem("admin-token");
-      const res = await fetch("/api/apps", {
-        method: "POST",
+      const isEditing = editingAppId !== null;
+      const url = isEditing ? `/api/apps/${editingAppId}` : "/api/apps";
+      const method = isEditing ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
@@ -347,25 +404,30 @@ export default function AdminApp() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to persist SaaS product");
+        throw new Error(errorData.error || `Failed to ${isEditing ? "update" : "persist"} SaaS product`);
       }
 
-      const newApp = await res.json();
-      setApps([newApp, ...apps]);
-
-      setFormName("");
-      setFormSubtitle("");
-      setFormDescription("");
-      setFormCustomUrl("");
-      setFormAccessUrl("");
-      setFormPrice("49.99");
-      setFormInstructor("");
-      setFormDuration("12.5 hrs");
-      setFormLessonsCount("24");
-      setFormRating("4.8");
-      setAdminNotification({ type: "success", text: `"${newApp.name}" has been certified and successfully published!` });
+      const updatedOrNewApp = await res.json();
+      if (isEditing) {
+        setApps(apps.map(a => a.id === editingAppId ? updatedOrNewApp : a));
+        setAdminNotification({ type: "success", text: `"${updatedOrNewApp.name}" has been successfully updated!` });
+        handleCancelEdit();
+      } else {
+        setApps([updatedOrNewApp, ...apps]);
+        setFormName("");
+        setFormSubtitle("");
+        setFormDescription("");
+        setFormCustomUrl("");
+        setFormAccessUrl("");
+        setFormPrice("49.99");
+        setFormInstructor("");
+        setFormDuration("12.5 hrs");
+        setFormLessonsCount("24");
+        setFormRating("4.8");
+        setAdminNotification({ type: "success", text: `"${updatedOrNewApp.name}" has been certified and successfully published!` });
+      }
     } catch (err: any) {
-      setAdminNotification({ type: "error", text: err.message || "An exception occurred during creation" });
+      setAdminNotification({ type: "error", text: err.message || "An exception occurred during operation" });
     } finally {
       setSubmitting(false);
     }
@@ -680,9 +742,27 @@ export default function AdminApp() {
                     
                     {/* Column Add Form */}
                     <div className="lg:col-span-5 glass p-6 rounded-2xl space-y-5 h-fit">
-                      <div className="flex items-center gap-2 pb-3 border-b border-app-border">
-                        <Plus className="w-5 h-5 text-app-text-sec" />
-                        <h3 className="text-sm font-semibold uppercase tracking-wider font-display text-app-text">Add SaaS Product</h3>
+                      <div className="flex items-center gap-2 pb-3 border-b border-app-border justify-between">
+                        <div className="flex items-center gap-2">
+                          {editingAppId !== null ? (
+                            <Edit className="w-5 h-5 text-indigo-400" />
+                          ) : (
+                            <Plus className="w-5 h-5 text-app-text-sec" />
+                          )}
+                          <h3 className="text-sm font-semibold uppercase tracking-wider font-display text-app-text">
+                            {editingAppId !== null ? "Edit SaaS Product" : "Add SaaS Product"}
+                          </h3>
+                        </div>
+                        {editingAppId !== null && (
+                          <button
+                            type="button"
+                            onClick={handleCancelEdit}
+                            className="text-[10px] font-mono px-2 py-1 bg-app-btn-sec hover:bg-rose-500/10 hover:text-rose-400 border border-app-border hover:border-rose-500/30 rounded flex items-center gap-1 text-app-text-muted transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                            Cancel Edit
+                          </button>
+                        )}
                       </div>
 
                       <form id="add-app-form" onSubmit={handleCreateApp} className="space-y-4">
@@ -902,9 +982,17 @@ export default function AdminApp() {
                           id="submit-form-btn"
                           type="submit"
                           disabled={submitting}
-                          className="w-full py-2.5 text-xs rounded-lg transition-all bg-app-text text-app-bg font-bold cursor-pointer"
+                          className={`w-full py-2.5 text-xs rounded-lg transition-all font-bold cursor-pointer ${
+                            editingAppId !== null 
+                              ? "bg-indigo-600 hover:bg-indigo-700 text-white" 
+                              : "bg-app-text text-app-bg"
+                          }`}
                         >
-                          {submitting ? "Writing SQLite..." : "Certify & Set Active ✨"}
+                          {submitting 
+                            ? "Writing SQLite..." 
+                            : editingAppId !== null 
+                              ? "Save Changes ✨" 
+                              : "Certify & Set Active ✨"}
                         </button>
                       </form>
 
@@ -931,7 +1019,7 @@ export default function AdminApp() {
                               <th className="pb-3 font-medium">SaaS app</th>
                               <th className="pb-3 font-medium">Metric clicks</th>
                               <th className="pb-3 font-medium">Status</th>
-                              <th className="pb-3 font-medium text-right">Delete</th>
+                              <th className="pb-3 font-medium text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-app-border/50">
@@ -963,12 +1051,26 @@ export default function AdminApp() {
                                   </span>
                                 </td>
                                 <td className="py-3 text-right">
-                                  <button
-                                    onClick={() => handleDeleteApp(app.id)}
-                                    className="p-1.5 text-app-text-muted hover:text-rose-500 hover:bg-app-btn-sec rounded transition-colors"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  <div className="flex items-center justify-end space-x-1.5">
+                                    <button
+                                      onClick={() => handleStartEdit(app)}
+                                      title="Edit App Details"
+                                      className={`p-1.5 rounded transition-colors ${
+                                        editingAppId === app.id
+                                          ? "text-indigo-400 bg-indigo-500/10 border border-indigo-500/20"
+                                          : "text-app-text-muted hover:text-indigo-400 hover:bg-app-btn-sec"
+                                      }`}
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteApp(app.id)}
+                                      title="Delete App"
+                                      className="p-1.5 text-app-text-muted hover:text-rose-500 hover:bg-app-btn-sec rounded transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}

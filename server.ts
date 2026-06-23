@@ -240,6 +240,22 @@ class JsonDatabase {
     return filtered.length < initialLen;
   }
 
+  async updateApp(id: number, app: any): Promise<any> {
+    const list = this.read();
+    const index = list.findIndex(a => a.id === Number(id));
+    if (index === -1) {
+      throw new Error(`SaaS app ${id} not found`);
+    }
+    const updatedApp = {
+      ...list[index],
+      ...app,
+      id: Number(id), // preserve id
+    };
+    list[index] = updatedApp;
+    this.write(list);
+    return updatedApp;
+  }
+
   async getAds(): Promise<any[]> {
     return this.readAds();
   }
@@ -467,6 +483,42 @@ class SqliteDatabase {
           }
           console.log(`[SQLite DB] Successfully deleted saas_apps record with ID: ${id}`);
           resolve(true);
+        });
+      });
+    });
+  }
+
+  async updateApp(id: number, app: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const q = `
+        UPDATE saas_apps 
+        SET name = ?, subtitle = ?, description = ?, category = ?, pricingType = ?, logoUrl = ?, accessUrl = ?, price = ?, instructor = ?, rating = ?, duration = ?, lessonsCount = ?
+        WHERE id = ?
+      `;
+      const self = this;
+      this.db.run(q, [
+        app.name, 
+        app.subtitle, 
+        app.description, 
+        app.category, 
+        app.pricingType, 
+        app.logoUrl, 
+        app.accessUrl,
+        app.price !== undefined ? Number(app.price) : 0,
+        app.instructor || "",
+        app.rating !== undefined ? Number(app.rating) : 4.7,
+        app.duration || "",
+        app.lessonsCount !== undefined ? Number(app.lessonsCount) : 0,
+        Number(id)
+      ], (err: any) => {
+        if (err) {
+          console.error(`[SQLite DB] Error updating app record ID ${id}:`, err);
+          return reject(err);
+        }
+        
+        self.db.get("SELECT * FROM saas_apps WHERE id = ?", [id], (gErr: any, row: any) => {
+          if (gErr) return reject(gErr);
+          resolve(row);
         });
       });
     });
@@ -741,6 +793,51 @@ async function startServer() {
     } catch (err) {
       console.error("[API] Error adding app:", err);
       res.status(500).json({ error: "Failed to persist new application" });
+    }
+  });
+
+  // PUT update an existing SaaS application record
+  app.put("/api/apps/:id", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== "Bearer vision79-session-token-v1") {
+      return res.status(401).json({ error: "Unauthorized access: Administrator session is required." });
+    }
+
+    const id = Number(req.params.id);
+    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl, price, instructor, rating, duration, lessonsCount } = req.body;
+
+    // validation
+    if (!name || !subtitle || !description || !category || !pricingType || !logoUrl || !accessUrl) {
+      return res.status(400).json({ error: "Missing required fields in body payload" });
+    }
+
+    if (category !== "web" && category !== "desktop" && category !== "games" && category !== "courses") {
+      return res.status(400).json({ error: "Category must be 'web', 'desktop', 'games', or 'courses'" });
+    }
+
+    if (pricingType !== "free" && pricingType !== "free_trial" && pricingType !== "premium") {
+      return res.status(400).json({ error: "Pricing type must be 'free', 'free_trial', or 'premium'" });
+    }
+
+    try {
+      const updatedApp = await db.updateApp(id, {
+        name,
+        subtitle,
+        description,
+        category,
+        pricingType,
+        logoUrl,
+        accessUrl,
+        price: price !== undefined ? Number(price) : 0,
+        instructor: instructor || "",
+        rating: rating !== undefined ? Number(rating) : 4.7,
+        duration: duration || "",
+        lessonsCount: lessonsCount !== undefined ? Number(lessonsCount) : 10
+      });
+      res.json(updatedApp);
+    } catch (err) {
+      console.error("[API] Error updating app:", err);
+      res.status(500).json({ error: "Failed to update application" });
     }
   });
 
