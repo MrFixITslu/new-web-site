@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  saas-marketplace:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saas-marketplace-app
+    restart: always
+    environment:
+      - NODE_ENV=production
+      # Inside the container, we let the app run on port 3000
+      - PORT=3000
+      # You can specify other secrets here if needed, e.g.:
+      # - ADMIN_PASSWORD=vision79admin
+    ports:
+      # PORT MAPPING: host_port:container_port
+      # Adjust the host_port (left side) as needed.
+      # E.g., to access via http://192.168.100.163 directly without a port, map to port 80:
+      # - "80:3000"
+      # E.g., to access via http://192.168.100.163:3030, map to port 3030:
+      - "3030:3000"
+    volumes:
+      # Mount the JSON files on the host to keep database edits persistent across container restarts
+      - ./vision79_saas.json:/app/vision79_saas.json
+      - ./vision79_ads.json:/app/vision79_ads.json
