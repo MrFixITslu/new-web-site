@@ -1,5 +1,5 @@
 {
-  "name": "VISION79",
+  "name": "Vision79 MrketPlace",
   "description": "An ultra-minimalist, sleek SaaS Marketplace featuring dynamic search, category filtering, launch tracking, and an admin dashboard.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

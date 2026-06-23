@@ -415,8 +415,49 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+  let viteInstance: any = null;
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[Vite] Initializing Vite dev server in middleware mode.");
+    viteInstance = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "custom",
+    });
+  }
+
   // Middleware
   app.use(express.json());
+
+  // Canonical admin intercept routes registered first to prioritize admin page loading
+  const adminPaths = [
+    "/admin", "/admin/", 
+    "/adimin", "/adimin/", 
+    "/adimn", "/adimn/", 
+    "/Admin", "/Admin/", 
+    "/Adimin", "/Adimin/"
+  ];
+
+  app.get(adminPaths, async (req, res, next) => {
+    console.log(`[Admin Router] Serving admin.html for path: ${req.originalUrl} (Dev Mode: ${process.env.NODE_ENV !== "production"})`);
+    if (process.env.NODE_ENV !== "production" && viteInstance) {
+      try {
+        const url = req.originalUrl;
+        const htmlPath = path.resolve(process.cwd(), "admin.html");
+        if (fs.existsSync(htmlPath)) {
+          const html = fs.readFileSync(htmlPath, "utf-8");
+          const transformedHtml = await viteInstance.transformIndexHtml(url, html);
+          return res.status(200).set({ "Content-Type": "text/html" }).end(transformedHtml);
+        } else {
+          return res.status(404).end("admin.html file not found");
+        }
+      } catch (e) {
+        viteInstance.ssrFixStacktrace(e as Error);
+        return next(e);
+      }
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      return res.sendFile(path.join(distPath, "admin.html"));
+    }
+  });
 
   // GET all SaaS applications
   app.get("/api/apps", async (req, res) => {
@@ -634,55 +675,29 @@ async function startServer() {
 
   // Vite development vs production serving logic
   if (process.env.NODE_ENV !== "production") {
-    console.log("[Vite] Mounting Vite middleware in development mode.");
-    
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "custom",
-    });
-    
-    app.use(vite.middlewares);
+    if (viteInstance) {
+      console.log("[Vite] Mounting Vite middleware in development mode.");
+      app.use(viteInstance.middlewares);
+    }
 
-    const adminPaths = [
-      "/admin", "/admin/", 
-      "/adimin", "/adimin/", 
-      "/adimn", "/adimn/", 
-      "/Admin", "/Admin/", 
-      "/Adimin", "/Adimin/"
-    ];
-
-    // Serve admin workspace directly for any matching paths without redirecting
-    app.get(adminPaths, async (req, res, next) => {
-      try {
-        const url = req.originalUrl;
-        const htmlPath = path.resolve(process.cwd(), "admin.html");
-        if (fs.existsSync(htmlPath)) {
-          const html = fs.readFileSync(htmlPath, "utf-8");
-          const transformedHtml = await vite.transformIndexHtml(url, html);
-          res.status(200).set({ "Content-Type": "text/html" }).end(transformedHtml);
-        } else {
-          res.status(404).end("admin.html file not found");
-        }
-      } catch (e) {
-        vite.ssrFixStacktrace(e as Error);
-        next(e);
-      }
-    });
-
-    // Fallback UI router
+    // Fallback UI router in development
     app.get("*", async (req, res, next) => {
       try {
         const url = req.originalUrl;
         const htmlPath = path.resolve(process.cwd(), "index.html");
         if (fs.existsSync(htmlPath)) {
           const html = fs.readFileSync(htmlPath, "utf-8");
-          const transformedHtml = await vite.transformIndexHtml(url, html);
+          const transformedHtml = viteInstance 
+            ? await viteInstance.transformIndexHtml(url, html)
+            : html;
           res.status(200).set({ "Content-Type": "text/html" }).end(transformedHtml);
         } else {
           res.status(404).end("index.html file not found");
         }
       } catch (e) {
-        vite.ssrFixStacktrace(e as Error);
+        if (viteInstance) {
+          viteInstance.ssrFixStacktrace(e as Error);
+        }
         next(e);
       }
     });
@@ -691,19 +706,6 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     
     app.use(express.static(distPath, { index: false }));
-
-    const adminPathsProd = [
-      "/admin", "/admin/", 
-      "/adimin", "/adimin/", 
-      "/adimn", "/adimn/", 
-      "/Admin", "/Admin/", 
-      "/Adimin", "/Adimin/"
-    ];
-
-    app.get(adminPathsProd, (req, res) => {
-      console.log(`[Production Router] Serving admin.html directly for path: ${req.originalUrl}`);
-      res.sendFile(path.join(distPath, "admin.html"));
-    });
 
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
