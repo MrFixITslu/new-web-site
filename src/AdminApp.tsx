@@ -96,28 +96,22 @@ export default function AdminApp() {
   const [formName, setFormName] = useState("");
   const [formSubtitle, setFormSubtitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formCategory, setFormCategory] = useState<"web" | "desktop" | "games" | "training">("web");
+  const [formCategory, setFormCategory] = useState<"web" | "desktop" | "games" | "courses">("web");
   const [formPricing, setFormPricing] = useState<"free" | "free_trial" | "premium">("free");
   const [formLogoType, setFormLogoType] = useState<"preset" | "url">("preset");
   const [formPresetIcon, setFormPresetIcon] = useState("lucide:ShieldCheck");
   const [formCustomUrl, setFormCustomUrl] = useState("");
   const [formAccessUrl, setFormAccessUrl] = useState("");
+  
+  // Custom courses admin form states
+  const [formPrice, setFormPrice] = useState("49.99");
+  const [formInstructor, setFormInstructor] = useState("");
+  const [formDuration, setFormDuration] = useState("12.5 hrs");
+  const [formLessonsCount, setFormLessonsCount] = useState("24");
+  const [formRating, setFormRating] = useState("4.8");
+
   const [adminNotification, setAdminNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [adNotification, setAdNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  // Auto-dismiss notifications after 6 seconds
-  useEffect(() => {
-    if (!adminNotification) return;
-    const t = setTimeout(() => setAdminNotification(null), 6000);
-    return () => clearTimeout(t);
-  }, [adminNotification]);
-
-  useEffect(() => {
-    if (!adNotification) return;
-    const t = setTimeout(() => setAdNotification(null), 6000);
-    return () => clearTimeout(t);
-  }, [adNotification]);
 
   // Carousel Ads Management state & handlers
   const [ads, setAds] = useState<SaaSAd[]>([]);
@@ -129,6 +123,7 @@ export default function AdminApp() {
   const [adImageUrl, setAdImageUrl] = useState("");
   const [adLinkUrl, setAdLinkUrl] = useState("");
   const [adSubmitting, setAdSubmitting] = useState(false);
+  const [adNotification, setAdNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fetchAds = async () => {
     try {
@@ -341,7 +336,12 @@ export default function AdminApp() {
           category: formCategory,
           pricingType: formPricing,
           logoUrl,
-          accessUrl: formAccessUrl
+          accessUrl: formAccessUrl || "#",
+          price: formPricing === "free" ? 0 : parseFloat(formPrice) || 0,
+          instructor: formCategory === "courses" ? formInstructor : "",
+          rating: formCategory === "courses" ? parseFloat(formRating) || 4.7 : 4.7,
+          duration: formCategory === "courses" ? formDuration : "",
+          lessonsCount: formCategory === "courses" ? parseInt(formLessonsCount, 10) || 10 : 0
         })
       });
 
@@ -358,6 +358,11 @@ export default function AdminApp() {
       setFormDescription("");
       setFormCustomUrl("");
       setFormAccessUrl("");
+      setFormPrice("49.99");
+      setFormInstructor("");
+      setFormDuration("12.5 hrs");
+      setFormLessonsCount("24");
+      setFormRating("4.8");
       setAdminNotification({ type: "success", text: `"${newApp.name}" has been certified and successfully published!` });
     } catch (err: any) {
       setAdminNotification({ type: "error", text: err.message || "An exception occurred during creation" });
@@ -408,7 +413,7 @@ export default function AdminApp() {
     webAppsCount: apps.filter(a => a.category === "web").length,
     desktopAppsCount: apps.filter(a => a.category === "desktop").length,
     gamesAppsCount: apps.filter(a => a.category === "games").length,
-    trainingAppsCount: apps.filter(a => a.category === "training").length
+    coursesAppsCount: apps.filter(a => a.category === "courses").length
   };
 
   return (
@@ -560,8 +565,8 @@ export default function AdminApp() {
                         <span id="stat-games-apps" className="text-2xl font-mono font-bold text-app-text-sec block">{stats.gamesAppsCount}</span>
                       </div>
                       <div className="bg-app-btn-sec/30 p-4 rounded-xl border border-app-border space-y-1">
-                        <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Training Suites</span>
-                        <span id="stat-training-apps" className="text-2xl font-mono font-bold text-app-text-sec block">{stats.trainingAppsCount}</span>
+                        <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Premium Courses</span>
+                        <span id="stat-courses-apps" className="text-2xl font-mono font-bold text-app-text-sec block">{stats.coursesAppsCount}</span>
                       </div>
                       <div className="bg-app-btn-sec/30 p-4 rounded-xl border border-app-border space-y-1">
                         <span className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">Total Launches</span>
@@ -719,7 +724,7 @@ export default function AdminApp() {
                               <option className="bg-app-bg text-app-text" value="web">Web App</option>
                               <option className="bg-app-bg text-app-text" value="desktop">Desktop App</option>
                               <option className="bg-app-bg text-app-text" value="games">Game App</option>
-                              <option className="bg-app-bg text-app-text" value="training">Training</option>
+                              <option className="bg-app-bg text-app-text" value="courses">SaaS Course</option>
                             </select>
                           </div>
 
@@ -733,7 +738,7 @@ export default function AdminApp() {
                             >
                               <option className="bg-app-bg text-app-text" value="free">Free</option>
                               <option className="bg-app-bg text-app-text" value="free_trial">Free Trial</option>
-                              <option className="bg-app-bg text-app-text" value="premium">Subscription</option>
+                              <option className="bg-app-bg text-app-text" value="premium">Subscription / Premium</option>
                             </select>
                           </div>
                         </div>
@@ -747,9 +752,91 @@ export default function AdminApp() {
                             value={formDescription}
                             onChange={(e) => setFormDescription(e.target.value)}
                             className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2.5 text-xs resize-none focus:outline-none focus:border-app-border/80"
-                            placeholder="Briefly detail what security scans or system solutions this tool runs..."
+                            placeholder="Briefly detail what security scans, system solutions, or comprehensive curriculums this item hosts..."
                           />
                         </div>
+
+                        {formCategory === "courses" && (
+                          <div id="course-details-form-section" className="bg-violet-500/5 p-3.5 rounded-xl border border-violet-500/15 space-y-3.5 my-3">
+                            <span className="text-[10px] font-mono uppercase text-violet-500 dark:text-violet-400 block tracking-wider font-bold">Course Meta Fields (Udemy Style)</span>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-sec uppercase">Course Price ($ USD)</label>
+                                <input 
+                                  type="text" 
+                                  value={formPrice} 
+                                  onChange={(e) => setFormPrice(e.target.value)} 
+                                  placeholder="19.99"
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-xs focus:outline-none focus:border-app-border"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-sec uppercase">Instructor Name</label>
+                                <input 
+                                  type="text" 
+                                  value={formInstructor} 
+                                  onChange={(e) => setFormInstructor(e.target.value)} 
+                                  placeholder="e.g. Kent C. Dodds"
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-xs focus:outline-none focus:border-app-border"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-sec uppercase">Rating (0-5)</label>
+                                <input 
+                                  type="text" 
+                                  value={formRating} 
+                                  onChange={(e) => setFormRating(e.target.value)} 
+                                  placeholder="4.8"
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-xs focus:outline-none focus:border-app-border"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-sec uppercase">Course Duration</label>
+                                <input 
+                                  type="text" 
+                                  value={formDuration} 
+                                  onChange={(e) => setFormDuration(e.target.value)} 
+                                  placeholder="e.g. 18.5 hours"
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-xs focus:outline-none focus:border-app-border"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-sec uppercase">Lectures Count</label>
+                                <input 
+                                  type="text" 
+                                  value={formLessonsCount} 
+                                  onChange={(e) => setFormLessonsCount(e.target.value)} 
+                                  placeholder="e.g. 42"
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-xs focus:outline-none focus:border-app-border"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {formCategory !== "courses" && formPricing !== "free" && (
+                          <div id="app-pricing-form-section" className="bg-indigo-500/5 p-3.5 rounded-xl border border-indigo-500/15 space-y-2 my-2">
+                            <span className="text-[10px] font-mono uppercase text-indigo-500 dark:text-indigo-400 block tracking-wider font-bold">App Pricing Settings</span>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-mono text-app-text-sec uppercase">App Price ($ USD / One-time or Monthly)</label>
+                              <input 
+                                type="text"
+                                required
+                                value={formPrice}
+                                onChange={(e) => setFormPrice(e.target.value)}
+                                placeholder="e.g. 19.99"
+                                className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2.5 text-xs placeholder:text-app-text-muted/65 focus:outline-none focus:border-app-border/80"
+                              />
+                              <p className="text-[9px] text-app-text-muted leading-tight font-mono">
+                                Set the dynamic price for this SaaS app. Enter 0 if free tier applies.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Format Selection Selector Card */}
                         <div className="p-3 rounded-xl border bg-app-btn-sec/20 border-app-border space-y-3">
@@ -848,19 +935,7 @@ export default function AdminApp() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-app-border/50">
-                            {loading ? (
-                              <tr>
-                                <td colSpan={4} className="py-10 text-center text-xs text-app-text-muted font-mono">
-                                  Loading registry...
-                                </td>
-                              </tr>
-                            ) : apps.length === 0 ? (
-                              <tr>
-                                <td colSpan={4} className="py-10 text-center text-xs text-app-text-muted font-mono">
-                                  No applications in registry. Add your first SaaS product above.
-                                </td>
-                              </tr>
-                            ) : apps.map((app) => (
+                            {apps.map((app) => (
                               <tr key={app.id} className="hover:bg-app-btn-sec/20 transition-colors duration-150">
                                 <td className="py-3 flex items-center space-x-3">
                                   <div className="w-8 h-8 rounded-lg bg-app-btn-sec flex items-center justify-center border border-app-border shrink-0">
@@ -868,7 +943,15 @@ export default function AdminApp() {
                                   </div>
                                   <div className="min-w-0">
                                     <p className="font-semibold text-app-text truncate">{app.name}</p>
-                                    <p className="text-[10px] text-app-text-muted font-mono truncate">{app.pricingType}</p>
+                                    <div className="flex items-center gap-1.5 font-mono text-[10px] truncate select-none">
+                                      <span className="text-app-text-muted lowercase">{app.pricingType}</span>
+                                      <span className="text-app-text-muted/50">•</span>
+                                      {app.price && app.price > 0 ? (
+                                        <span className="text-indigo-400 font-bold">USD ${app.price.toFixed(2)}</span>
+                                      ) : (
+                                        <span className="text-emerald-500 font-medium">Free</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="py-3 font-mono text-app-text-sec">
@@ -1065,7 +1148,7 @@ export default function AdminApp() {
                 <div className="status-dot"></div> Operational
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-6">
+            <div className="flex items-center gap-6 hidden sm:flex">
               <span>© 2026 VISION79 INC</span>
               <span>Secure Layer</span>
               <span>Terms API</span>

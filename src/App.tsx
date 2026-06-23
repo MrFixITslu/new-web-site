@@ -17,15 +17,21 @@ import {
   ChevronRight,
   Megaphone,
   Gamepad2,
-  GraduationCap
+  GraduationCap,
+  Star,
+  Coins
 } from "lucide-react";
 import { SaaSApp, CategoryFilter, SaaSAd } from "./types";
 import { AppLogo } from "./components/AppLogo";
+import { CourseDetailPage } from "./components/CourseDetailPage";
+import { ServicesPriceList } from "./components/ServicesPriceList";
 
 export default function App() {
   const [apps, setApps] = useState<SaaSApp[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<SaaSApp | null>(null);
+  const [showServicesPriceList, setShowServicesPriceList] = useState<boolean>(false);
 
   // Ad carousel variables
   const [ads, setAds] = useState<SaaSAd[]>([]);
@@ -136,13 +142,19 @@ export default function App() {
     window.location.href = "/admin";
   };
 
+  const handleSelectCategory = (category: CategoryFilter) => {
+    setSelectedCategory(category);
+    setSelectedCourse(null);
+    setShowServicesPriceList(false);
+  };
+
   // Filters application dataset logic
   const filteredApps = apps.filter((app) => {
     const categoryMatches = selectedCategory === "all" || app.category === selectedCategory;
     const searchMatches = 
-      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.subtitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.description.toLowerCase().includes(searchQuery.toLowerCase());
+      app.name.toLowerCase().includes(searchQuery) ||
+      app.subtitle.toLowerCase().includes(searchQuery) ||
+      app.description.toLowerCase().includes(searchQuery);
     return categoryMatches && searchMatches;
   });
 
@@ -151,7 +163,7 @@ export default function App() {
       
       {/* PROFESSIONAL POLISH SYSTEM HEADER */}
       <header className="h-16 flex items-center justify-between px-8 border-b border-app-border bg-app-header-bg backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedCategory("all"); setSearchQuery(""); }}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedCategory("all"); setSearchQuery(""); setSelectedCourse(null); setShowServicesPriceList(false); }}>
           <div className="w-8 h-8 rounded-md flex items-center justify-center font-black text-xs tracking-tighter bg-app-text text-app-bg">V7</div>
           <span className="font-bold text-lg tracking-tighter text-app-text font-display">VISION79</span>
           <div className="h-4 w-px bg-app-border mx-2"></div>
@@ -161,7 +173,7 @@ export default function App() {
         <nav className="flex items-center gap-6 text-sm font-medium">
           <button 
             id="btn-explore"
-            onClick={() => setSelectedCategory("all")}
+            onClick={() => { setSelectedCategory("all"); setSelectedCourse(null); setShowServicesPriceList(false); }}
             className="transition font-sans text-app-text font-semibold cursor-pointer"
           >
             Explore
@@ -193,9 +205,9 @@ export default function App() {
             <ul className="space-y-2 text-sm">
               <li 
                 id="filter-all"
-                onClick={() => setSelectedCategory("all")}
+                onClick={() => handleSelectCategory("all")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
-                  selectedCategory === "all"
+                  selectedCategory === "all" && !showServicesPriceList
                     ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
                     : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
                 }`}
@@ -205,9 +217,9 @@ export default function App() {
               </li>
               <li 
                 id="filter-web"
-                onClick={() => setSelectedCategory("web")}
+                onClick={() => handleSelectCategory("web")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
-                  selectedCategory === "web"
+                  selectedCategory === "web" && !showServicesPriceList
                     ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
                     : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
                 }`}
@@ -217,9 +229,9 @@ export default function App() {
               </li>
               <li 
                 id="filter-desktop"
-                onClick={() => setSelectedCategory("desktop")}
+                onClick={() => handleSelectCategory("desktop")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
-                  selectedCategory === "desktop"
+                  selectedCategory === "desktop" && !showServicesPriceList
                     ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
                     : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
                 }`}
@@ -229,9 +241,9 @@ export default function App() {
               </li>
               <li 
                 id="filter-games"
-                onClick={() => setSelectedCategory("games")}
+                onClick={() => handleSelectCategory("games")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
-                  selectedCategory === "games"
+                  selectedCategory === "games" && !showServicesPriceList
                     ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
                     : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
                 }`}
@@ -240,16 +252,30 @@ export default function App() {
                 Games
               </li>
               <li 
-                id="filter-training"
-                onClick={() => setSelectedCategory("training")}
+                id="filter-courses"
+                onClick={() => handleSelectCategory("courses")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
-                  selectedCategory === "training"
-                    ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
+                  selectedCategory === "courses" && !showServicesPriceList
+                    ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-semibold"
                     : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
                 }`}
               >
-                <GraduationCap className="w-4 h-4 stroke-[1.8]" />
-                Training
+                <GraduationCap className="w-4 h-4 stroke-[1.8] text-indigo-400" />
+                Courses
+              </li>
+
+              {/* Fire Lion Services Pricing List Nav Panel */}
+              <li 
+                id="filter-services"
+                onClick={() => { setShowServicesPriceList(true); setSelectedCourse(null); }}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-250 border ${
+                  showServicesPriceList
+                    ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-400 font-extrabold shadow-sm"
+                    : "text-app-text-sec hover:text-emerald-400 hover:bg-emerald-500/[0.04] border-transparent"
+                }`}
+              >
+                <Coins className="w-4 h-4 stroke-[1.8] text-emerald-400" />
+                Services Price List
               </li>
             </ul>
           </div>
@@ -262,23 +288,49 @@ export default function App() {
           <div className="p-6 sm:p-10 flex-1">
             
             <AnimatePresence mode="wait">
-              <motion.div
-                key="explore"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.15 }}
-                className="space-y-8"
-              >
-                {/* Hero Text Block */}
-                <div className="flex flex-col gap-1 max-w-3xl">
-                  <h1 className="text-4xl font-semibold tracking-tight font-display text-app-text">
-                    Discover the Stack.
-                  </h1>
-                  <p className="text-app-text-sec text-lg font-light leading-snug">
-                    Sleek, high-performance tools engineered for modern engineering teams.
-                  </p>
-                </div>
+              {showServicesPriceList ? (
+                <motion.div
+                  key="services-price-list-view"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <ServicesPriceList 
+                    onBack={() => setShowServicesPriceList(false)}
+                  />
+                </motion.div>
+              ) : selectedCourse ? (
+                <motion.div
+                  key="course-detail-view"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <CourseDetailPage 
+                    course={selectedCourse}
+                    onBack={() => setSelectedCourse(null)}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="explore"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.15 }}
+                  className="space-y-8"
+                >
+                  {/* Hero Text Block */}
+                  <div className="flex flex-col gap-1 max-w-3xl">
+                    <h1 className="text-4xl font-semibold tracking-tight font-display text-app-text">
+                      Discover the Stack.
+                    </h1>
+                    <p className="text-app-text-sec text-lg font-light leading-snug">
+                      Sleek, high-performance tools engineered for modern engineering teams.
+                    </p>
+                  </div>
 
                 {/* PROMOTION ADS HERO CAROUSEL */}
                 {ads.length > 0 && (
@@ -293,7 +345,10 @@ export default function App() {
                           transition={{ duration: 0.3 }}
                           onClick={() => {
                             const link = ads[currentAdIndex]?.linkUrl;
-                            if (link) {
+                            if (link && (link === "/services-pricing" || link.includes("service") || link.includes("pricing"))) {
+                              setShowServicesPriceList(true);
+                              setSelectedCourse(null);
+                            } else if (link) {
                               window.open(link, "_blank", "noopener,noreferrer");
                             }
                           }}
@@ -385,7 +440,7 @@ export default function App() {
                     id="search-input"
                     type="text" 
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => setSearchQuery(e.target.value.toLowerCase())}
                     placeholder="Search tools, databases, frameworks, and extensions..." 
                     className="w-full bg-app-input border border-app-input-border rounded-full py-3.5 pl-12 pr-6 text-sm focus:outline-none focus:ring-1 focus:ring-app-border focus:border-app-border transition-all text-app-text placeholder:text-app-text-muted/60"
                   />
@@ -438,23 +493,34 @@ export default function App() {
                       {filteredApps.map((app) => {
                         const isPulsing = pulsingAppId === app.id;
                         const isWeb = app.category === "web";
+                        const isCourse = app.category === "courses";
+                        
                         const pricingText = 
+                          isCourse ? (app.price && app.price > 0 ? `$${app.price.toFixed(2)}` : "Free Masterclass") :
                           app.pricingType === "free" ? "Free" : 
-                          app.pricingType === "free_trial" ? "Free Trial" : "Subscription";
+                          app.pricingType === "free_trial" ? (app.price && app.price > 0 ? `Trial / $${app.price.toFixed(2)}` : "Free Trial") : 
+                          (app.price && app.price > 0 ? `$${app.price.toFixed(2)}` : "Subscription");
 
                         let badgeColor = "bg-app-btn-sec text-app-text-sec border border-app-border";
                         if (app.category === "desktop") {
                           badgeColor = "bg-blue-600/10 text-blue-500 font-medium border border-blue-500/20";
                         } else if (app.category === "games") {
                           badgeColor = "bg-amber-600/10 text-amber-500 font-medium border border-amber-500/20";
-                        } else if (app.category === "training") {
-                          badgeColor = "bg-emerald-600/10 text-emerald-500 font-medium border border-emerald-500/20";
+                        } else if (app.category === "courses") {
+                          badgeColor = "bg-violet-600/10 text-violet-500 font-bold border border-violet-500/20";
                         }
 
                         return (
                           <div 
                             key={app.id}
-                            className="glass p-5 rounded-2xl flex flex-col justify-between gap-4 group hover:border-app-text/30 transition-colors duration-300 shadow-sm hover:shadow"
+                            onClick={() => {
+                              if (isCourse) {
+                                setSelectedCourse(app);
+                              }
+                            }}
+                            className={`glass p-5 rounded-2xl flex flex-col justify-between gap-4 group hover:border-app-text/30 transition-all duration-300 shadow-sm hover:shadow ${
+                              isCourse ? "cursor-pointer hover:shadow-lg hover:bg-violet-500/[0.02]" : ""
+                            }`}
                           >
                             <div className="space-y-4">
                               {/* Top Badges */}
@@ -464,9 +530,13 @@ export default function App() {
                                 </div>
                                 <div className="flex flex-col items-end gap-1 font-mono">
                                   <span className={`text-[10px] px-2 py-0.5 rounded uppercase ${badgeColor}`}>
-                                    {app.category}
+                                    {isCourse ? "Course 📚" : app.category}
                                   </span>
-                                  <span className="text-[10px] px-2 py-0.5 border border-app-border bg-app-btn-sec/50 text-app-text-muted uppercase">
+                                  <span className={`text-[10px] px-2 py-0.5 border rounded uppercase ${
+                                    isCourse 
+                                      ? "bg-violet-500/10 text-violet-500 border-violet-500/20 font-bold font-mono" 
+                                      : "border-app-border bg-app-btn-sec/50 text-app-text-muted"
+                                  }`}>
                                     {pricingText}
                                   </span>
                                 </div>
@@ -474,12 +544,24 @@ export default function App() {
 
                               {/* Content titles */}
                               <div>
-                                <h4 className="font-bold text-app-text transition font-display text-base">
+                                <h4 className="font-bold text-app-text group-hover:text-indigo-400 transition font-display text-base tracking-tight">
                                   {app.name}
                                 </h4>
-                                <p className="text-[11px] text-app-text-sec font-mono mt-0.5 tracking-wide leading-tight">
+                                <p className="text-[11px] text-app-text-sec font-mono mt-1 tracking-wide leading-tight">
                                   {app.subtitle}
                                 </p>
+                                
+                                {isCourse && (
+                                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-amber-500 font-mono">
+                                    <div className="flex items-center gap-0.5 text-yellow-500">
+                                      <Star className="w-3 h-3 fill-current text-yellow-500" />
+                                      <span className="font-bold">{app.rating || 4.8}</span>
+                                    </div>
+                                    <span className="text-app-text-muted select-none">•</span>
+                                    <span className="text-app-text-muted">By {app.instructor || "Expert Professor"}</span>
+                                  </div>
+                                )}
+
                                 <p className="text-xs text-app-text-muted mt-2.5 line-clamp-3 leading-relaxed">
                                   {app.description}
                                 </p>
@@ -487,23 +569,32 @@ export default function App() {
                             </div>
 
                             {/* Footer count action button block */}
-                            <div className="flex items-center justify-between pt-1 border-t border-app-border/40 mt-2">
+                            <div className="flex items-center justify-between pt-1.5 border-t border-app-border/40 mt-2">
                               <div className="flex items-center space-x-1 font-mono text-[10px] text-app-text-sec">
                                 <span className="font-semibold">{app.launchCount.toLocaleString()}</span>
                                 <span className="text-app-text-muted font-normal">
-                                  {isWeb ? "Launches" : "Downloads"}
+                                  {isCourse ? "Students" : isWeb ? "Launches" : "Downloads"}
                                 </span>
                               </div>
 
                               <button
-                                onClick={() => handleAppLaunch(app)}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                                  isPulsing
+                                onClick={(e) => {
+                                  if (isCourse) {
+                                    e.stopPropagation();
+                                    setSelectedCourse(app);
+                                  } else {
+                                    handleAppLaunch(app);
+                                  }
+                                }}
+                                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                                  isCourse 
+                                    ? "bg-violet-600 text-white hover:bg-violet-500" 
+                                    : isPulsing
                                     ? "bg-app-text text-app-bg scale-95 opacity-80"
                                     : "bg-app-text text-app-bg hover:opacity-90"
                                 }`}
                               >
-                                {app.pricingType === "premium" ? "Subscribe 🔒" : isWeb ? "Launch ↗" : "Download ↓"}
+                                {isCourse ? "Study Class 🎓" : app.pricingType === "premium" ? "Subscribe 🔒" : isWeb ? "Launch ↗" : "Download ↓"}
                               </button>
                             </div>
                           </div>
@@ -513,6 +604,7 @@ export default function App() {
                   )}
                 </div>
               </motion.div>
+              )}
             </AnimatePresence>
 
           </div>
@@ -525,7 +617,7 @@ export default function App() {
                 <div className="status-dot"></div> Operational
               </div>
             </div>
-            <div className="hidden sm:flex items-center gap-6">
+            <div className="flex items-center gap-6 hidden sm:flex">
               <span>© 2026 VISION79 INC</span>
               <span>Secure Layer</span>
               <span>Terms API</span>

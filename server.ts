@@ -7,7 +7,88 @@ import dotenv from "dotenv";
 // Configure environment variable definitions
 dotenv.config();
 
-const SEED_APPS: any[] = [];
+const SEED_APPS: any[] = [
+  {
+    name: "Full-Stack TypeScript Masterclass",
+    subtitle: "Master React 19, Node.js, and Modern Database Architecture from Scratch",
+    description: "Dive deep into modern software engineering with this complete guide. Learn design architectural modeling, state managers, and deployment under 3G latency conditions.",
+    category: "courses",
+    pricingType: "premium",
+    logoUrl: "lucide:GraduationCap",
+    accessUrl: "/course/1",
+    launchCount: 42,
+    price: 94.99,
+    instructor: "Dr. Angela Yu",
+    rating: 4.9,
+    duration: "24.5 total hours",
+    lessonsCount: 142
+  },
+  {
+    name: "Next.js 15 Intensive Bootcamp",
+    subtitle: "Server Actions, RSCs, Middleware and Security Best Practices",
+    description: "The complete guide to production-grade Next.js development. Understand hydration pipelines, nested layouts, and caching schemas.",
+    category: "courses",
+    pricingType: "premium",
+    logoUrl: "lucide:BookOpen",
+    accessUrl: "/course/2",
+    launchCount: 28,
+    price: 84.99,
+    instructor: "Kent C. Dodds",
+    rating: 4.8,
+    duration: "18 total hours",
+    lessonsCount: 96
+  },
+  {
+    name: "Rust Systems Design Blueprint",
+    subtitle: "Memory management, async runtimes, and high-performance services",
+    description: "An ultimate guide to real-time low-level backend design. Build high concurrency message queues and handle zero-copy deserialization.",
+    category: "courses",
+    pricingType: "premium",
+    logoUrl: "lucide:ShieldCheck",
+    accessUrl: "/course/3",
+    launchCount: 15,
+    price: 119.99,
+    instructor: "Arjan Codes",
+    rating: 4.7,
+    duration: "32 total hours",
+    lessonsCount: 180
+  },
+  {
+    name: "React for Beginners & Designers",
+    subtitle: "No-jargon interactive course to build sleek frontends",
+    description: "Learn Tailwind CSS grids, JSX basics, reusable hooks, and standard interactive controls step-by-step with real visual projects.",
+    category: "courses",
+    pricingType: "free",
+    logoUrl: "lucide:Flame",
+    accessUrl: "/course/4",
+    launchCount: 96,
+    price: 0,
+    instructor: "Sarah Drasner",
+    rating: 4.6,
+    duration: "4.5 total hours",
+    lessonsCount: 25
+  },
+  {
+    name: "DevOps Orchestration Engine",
+    subtitle: "Automate cloud builds, ingress proxies, and health monitoring pipelines",
+    description: "An ultimate workspace setup enabling smooth automation across local and sandbox servers with strict security levels.",
+    category: "web",
+    pricingType: "free_trial",
+    logoUrl: "lucide:Layers",
+    accessUrl: "https://github.com",
+    launchCount: 120
+  },
+  {
+    name: "Aetherial Combat Tactics",
+    subtitle: "Sleek indie high-refinement tactical shooter interface",
+    description: "Explore microcombat arenas, layout alignments, and custom sprite canvases loaded with instant controls.",
+    category: "games",
+    pricingType: "free",
+    logoUrl: "lucide:Gamepad2",
+    accessUrl: "https://itch.io",
+    launchCount: 85
+  }
+];
 
 let sqliteModule: any = null;
 
@@ -22,22 +103,37 @@ async function loadSqlite() {
   }
 }
 
-const SEED_ADS: any[] = [];
+const SEED_ADS: any[] = [
+  {
+    title: "Fire Lion ICT Managed Support & Price List",
+    subtitle: "Secure, enterprise-grade IT operations for Caribbean SMEs. Explore AST SLAs, daily cloud backup verification, on-site diagnostics, and interactive price builders.",
+    imageUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=600&auto=format&fit=crop",
+    linkUrl: "/services-pricing"
+  },
+  {
+    title: "Summer SaaS & Masterclass Courses Super Sale!",
+    subtitle: "Get up to 60% off on all masterclass courses this week. Study high concurrency engines, hot-swapping sandbox protocols, and compile outputs.",
+    imageUrl: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop",
+    linkUrl: "https://udemy.com"
+  }
+];
 
 const JSON_DB_FILE = path.join(process.cwd(), "vision79_saas.json");
 const JSON_ADS_FILE = path.join(process.cwd(), "vision79_ads.json");
 
 class JsonDatabase {
   async init() {
-    if (!fs.existsSync(JSON_DB_FILE)) {
-      console.log("[JSON Database] DB File not found. Seeding beautiful initial VISION79 JSON dataset...");
+    const dbEmpty = !fs.existsSync(JSON_DB_FILE) || fs.readFileSync(JSON_DB_FILE, "utf-8").trim() === "[]" || fs.readFileSync(JSON_DB_FILE, "utf-8").trim() === "";
+    if (dbEmpty) {
+      console.log("[JSON Database] DB File empty or not found. Seeding beautiful initial VISION79 JSON dataset...");
       this.write(SEED_APPS);
     } else {
       console.log("[JSON Database] Successfully loaded existing JSON-backed database.");
     }
 
-    if (!fs.existsSync(JSON_ADS_FILE)) {
-      console.log("[JSON Database] Ads File not found. Seeding beautiful initial VISION79 JSON ads dataset...");
+    const adsEmpty = !fs.existsSync(JSON_ADS_FILE) || fs.readFileSync(JSON_ADS_FILE, "utf-8").trim() === "[]" || fs.readFileSync(JSON_ADS_FILE, "utf-8").trim() === "";
+    if (adsEmpty) {
+      console.log("[JSON Database] Ads File empty or not found. Seeding beautiful initial VISION79 JSON ads dataset...");
       this.writeAds(SEED_ADS);
     } else {
       console.log("[JSON Database] Successfully loaded existing JSON-backed ads database.");
@@ -175,14 +271,21 @@ class SqliteDatabase {
               return reject(err);
             }
 
+            // Alter table statements to add newer columns dynamically for Courses supporting
+            this.db.run("ALTER TABLE saas_apps ADD COLUMN price REAL DEFAULT 0", () => {});
+            this.db.run("ALTER TABLE saas_apps ADD COLUMN instructor TEXT", () => {});
+            this.db.run("ALTER TABLE saas_apps ADD COLUMN rating REAL DEFAULT 4.7", () => {});
+            this.db.run("ALTER TABLE saas_apps ADD COLUMN duration TEXT", () => {});
+            this.db.run("ALTER TABLE saas_apps ADD COLUMN lessonsCount INTEGER DEFAULT 10", () => {});
+
             this.db.get("SELECT COUNT(*) as count FROM saas_apps", (countErr: any, row: any) => {
               if (countErr) return reject(countErr);
 
               if (row && row.count === 0) {
                 console.log("[SQLite DB] Database empty. Seeding SQLite...");
                 const stmt = this.db.prepare(
-                  `INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                  `INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount, price, instructor, rating, duration, lessonsCount)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                 );
 
                 for (const app of SEED_APPS) {
@@ -194,7 +297,12 @@ class SqliteDatabase {
                     app.pricingType,
                     app.logoUrl,
                     app.accessUrl,
-                    app.launchCount
+                    app.launchCount || 0,
+                    app.price || 0,
+                    app.instructor || "",
+                    app.rating || 4.7,
+                    app.duration || "",
+                    app.lessonsCount || 0
                   ]);
                 }
 
@@ -264,11 +372,24 @@ class SqliteDatabase {
   async addApp(app: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const q = `
-        INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount, price, instructor, rating, duration, lessonsCount)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
       `;
       const self = this;
-      this.db.run(q, [app.name, app.subtitle, app.description, app.category, app.pricingType, app.logoUrl, app.accessUrl], (err: any) => {
+      this.db.run(q, [
+        app.name, 
+        app.subtitle, 
+        app.description, 
+        app.category, 
+        app.pricingType, 
+        app.logoUrl, 
+        app.accessUrl,
+        app.price || 0,
+        app.instructor || "",
+        app.rating || 4.7,
+        app.duration || "",
+        app.lessonsCount || 0
+      ], (err: any) => {
         if (err) return reject(err);
         
         self.db.get("SELECT last_insert_rowid() AS lastId", (rowIdErr: any, rowIdRes: any) => {
@@ -413,7 +534,7 @@ async function startServer() {
   await initDb();
 
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3030;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   // Auto-detect production mode if NODE_ENV is set to "production", or we are running the compiled dist bundle, or server.ts is absent
   const isCJS = typeof __filename !== "undefined" && (__filename.endsWith(".cjs") || __filename.includes("dist"));
@@ -562,15 +683,15 @@ async function startServer() {
       return res.status(401).json({ error: "Unauthorized access: Administrator session is required." });
     }
 
-    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl } = req.body;
+    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl, price, instructor, rating, duration, lessonsCount } = req.body;
 
     // validation
     if (!name || !subtitle || !description || !category || !pricingType || !logoUrl || !accessUrl) {
       return res.status(400).json({ error: "Missing required fields in body payload" });
     }
 
-    if (category !== "web" && category !== "desktop" && category !== "games" && category !== "training") {
-      return res.status(400).json({ error: "Category must be 'web', 'desktop', 'games', or 'training'" });
+    if (category !== "web" && category !== "desktop" && category !== "games" && category !== "courses") {
+      return res.status(400).json({ error: "Category must be 'web', 'desktop', 'games', or 'courses'" });
     }
 
     if (pricingType !== "free" && pricingType !== "free_trial" && pricingType !== "premium") {
@@ -578,7 +699,20 @@ async function startServer() {
     }
 
     try {
-      const newApp = await db.addApp({ name, subtitle, description, category, pricingType, logoUrl, accessUrl });
+      const newApp = await db.addApp({ 
+        name, 
+        subtitle, 
+        description, 
+        category, 
+        pricingType, 
+        logoUrl, 
+        accessUrl,
+        price: price !== undefined ? Number(price) : 0,
+        instructor: instructor || "",
+        rating: rating !== undefined ? Number(rating) : 4.7,
+        duration: duration || "",
+        lessonsCount: lessonsCount !== undefined ? Number(lessonsCount) : 10
+      });
       res.status(201).json(newApp);
     } catch (err) {
       console.error("[API] Error adding app:", err);
