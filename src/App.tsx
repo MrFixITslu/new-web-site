@@ -490,7 +490,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {filteredApps.map((app) => {
+                      {filteredApps.map((app, idx) => {
                         const isPulsing = pulsingAppId === app.id;
                         const isWeb = app.category === "web";
                         const isCourse = app.category === "courses";
@@ -512,7 +512,7 @@ export default function App() {
 
                         return (
                           <div 
-                            key={app.id}
+                            key={app.id !== undefined && app.id !== null ? app.id : `fallback-${idx}`}
                             onClick={() => {
                               if (isCourse) {
                                 setSelectedCourse(app);
