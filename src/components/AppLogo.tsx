@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { 
   ShieldCheck, 
   Compass, 
@@ -26,7 +27,9 @@ export const PRESET_ICONS = [
 ];
 
 export function AppLogo({ logoUrl }: { logoUrl?: string }) {
+  const [hasError, setHasError] = useState(false);
   const safeLogoUrl = logoUrl || "";
+
   if (safeLogoUrl.startsWith("lucide:")) {
     const iconName = safeLogoUrl.replace("lucide:", "");
     const baseClass = "w-5 h-5 stroke-[1.8]";
@@ -45,6 +48,14 @@ export function AppLogo({ logoUrl }: { logoUrl?: string }) {
     }
   }
 
+  if (hasError || !safeLogoUrl) {
+    return (
+      <div className="w-10 h-10 rounded-xl border border-zinc-800 bg-zinc-900 flex items-center justify-center">
+        <span className="text-[10px] font-bold text-zinc-500 font-mono">APP</span>
+      </div>
+    );
+  }
+
   return (
     <div className="w-10 h-10 rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 flex items-center justify-center">
       <img 
@@ -52,16 +63,7 @@ export function AppLogo({ logoUrl }: { logoUrl?: string }) {
         alt="SaaS Logo" 
         className="w-full h-full object-cover"
         referrerPolicy="no-referrer"
-        onError={(e) => {
-          (e.target as HTMLElement).style.display = 'none';
-          const parent = (e.target as HTMLElement).parentElement;
-          if (parent) {
-            const fallbackSpan = document.createElement('span');
-            fallbackSpan.className = "text-[10px] font-bold text-zinc-500 font-mono";
-            fallbackSpan.innerText = "APP";
-            parent.appendChild(fallbackSpan);
-          }
-        }}
+        onError={() => setHasError(true)}
       />
     </div>
   );
