@@ -16,6 +16,7 @@ export interface SaaSApp {
   instructor?: string;
   duration?: string;
   lessonsCount?: number;
+  curriculum?: string;
 }
 
 export type CategoryFilter = 'all' | 'web' | 'desktop' | 'games' | 'courses';

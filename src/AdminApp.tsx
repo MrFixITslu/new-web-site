@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Plus, 
@@ -15,7 +15,15 @@ import {
   Image as ImageIcon,
   Megaphone,
   Edit,
-  X
+  X,
+  MessageSquare,
+  Star,
+  CheckCircle,
+  Sparkles,
+  BookOpen,
+  UploadCloud,
+  Check,
+  Loader2
 } from "lucide-react";
 import { SaaSApp, AppStatistics, SaaSAd } from "./types";
 import { AppLogo, PRESET_ICONS } from "./components/AppLogo";
@@ -53,6 +61,217 @@ const safeSessionStorage = {
     }
   }
 };
+
+interface LectureItemRowProps {
+  key?: any;
+  lecture: any;
+  chapIdx: number;
+  lecIdx: number;
+  onUpdate: (chapIdx: number, lecIdx: number, fields: any) => void;
+  onDelete: (chapIdx: number, lecIdx: number) => void;
+  adminToken: string | null;
+}
+
+export function LectureItemRow({ lecture, chapIdx, lecIdx, onUpdate, onDelete, adminToken }: LectureItemRowProps) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>, type: "video" | "audio") => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError(null);
+    setUploadProgress(0);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const token = adminToken || sessionStorage.getItem("admin-token");
+      
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 95) {
+            clearInterval(progressInterval);
+            return 95;
+          }
+          return prev + 5;
+        });
+      }, 150);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: formData
+      });
+
+      clearInterval(progressInterval);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(errData.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setUploadProgress(100);
+
+      if (type === "video") {
+        onUpdate(chapIdx, lecIdx, { videoUrl: data.url, audioUrl: undefined });
+      } else {
+        onUpdate(chapIdx, lecIdx, { audioUrl: data.url, videoUrl: undefined });
+      }
+    } catch (err: any) {
+      setUploadError(err.message || "An error occurred during upload");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeMedia = () => {
+    onUpdate(chapIdx, lecIdx, { videoUrl: undefined, audioUrl: undefined });
+  };
+
+  return (
+    <div className="bg-app-input/20 p-4 rounded-xl border border-app-border/30 space-y-3">
+      {/* Top Main Row */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        <div className="md:col-span-5 flex items-center gap-2">
+          <span className="text-[10px] font-mono text-app-text-muted shrink-0 w-8">{lecIdx + 1}.</span>
+          <input
+            type="text"
+            value={lecture.title || ""}
+            onChange={(e) => onUpdate(chapIdx, lecIdx, { title: e.target.value })}
+            placeholder="Lesson Title"
+            className="w-full bg-app-input border border-app-input-border text-app-text text-xs p-2 rounded-lg focus:outline-none focus:border-indigo-500/40 animate-none"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block md:hidden text-[9px] font-mono text-app-text-muted mb-0.5">Duration</label>
+          <input
+            type="text"
+            value={lecture.duration || ""}
+            onChange={(e) => onUpdate(chapIdx, lecIdx, { duration: e.target.value })}
+            placeholder="12:15"
+            className="w-full bg-app-input border border-app-input-border text-app-text text-xs p-2 rounded-lg text-center font-mono focus:outline-none"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block md:hidden text-[9px] font-mono text-app-text-muted mb-0.5">Sim Type</label>
+          <select
+            value={lecture.videoSimType || "setup"}
+            onChange={(e) => onUpdate(chapIdx, lecIdx, { videoSimType: e.target.value })}
+            className="w-full bg-app-input border border-app-input-border text-app-text text-[11px] p-2 rounded-lg focus:outline-none"
+          >
+            <option value="intro">Intro Video</option>
+            <option value="setup">Setup Walkthrough</option>
+            <option value="deepdive">Deep Dive Session</option>
+            <option value="advanced">Advanced Topic</option>
+          </select>
+        </div>
+
+        <div className="md:col-span-2 flex items-center gap-1.5 justify-center">
+          <input
+            type="checkbox"
+            id={`inline-preview-${chapIdx}-${lecIdx}`}
+            checked={!!lecture.freePreview}
+            onChange={(e) => onUpdate(chapIdx, lecIdx, { freePreview: e.target.checked })}
+            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-3.5 w-3.5"
+          />
+          <label htmlFor={`inline-preview-${chapIdx}-${lecIdx}`} className="text-[10px] font-mono text-app-text-muted select-none cursor-pointer">
+            Preview?
+          </label>
+        </div>
+
+        <div className="md:col-span-1 flex justify-end">
+          <button
+            onClick={() => onDelete(chapIdx, lecIdx)}
+            className="p-1.5 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 text-app-text-muted hover:text-rose-500 rounded-lg transition cursor-pointer"
+            title="Delete Lesson"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Upload/Attachment Row */}
+      <div className="pt-2.5 border-t border-app-border/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] font-mono uppercase text-app-text-muted tracking-wider">Lesson Material:</span>
+          {lecture.videoUrl ? (
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[10px] font-mono">
+              <Check className="w-3 h-3" />
+              <span>🎥 Video Loaded ({lecture.videoUrl.split("/").pop()})</span>
+            </div>
+          ) : lecture.audioUrl ? (
+            <div className="flex items-center gap-1.5 bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full text-[10px] font-mono">
+              <Check className="w-3 h-3" />
+              <span>🎧 Audio Loaded ({lecture.audioUrl.split("/").pop()})</span>
+            </div>
+          ) : (
+            <span className="text-[10px] font-mono text-app-text-muted italic bg-app-input/40 px-2 py-0.5 rounded-md">
+              (No custom file uploaded. Falling back to active Code Simulator stream)
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {uploading ? (
+            <div className="flex items-center gap-2 text-[11px] font-mono text-indigo-400">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Uploading ({uploadProgress}%)</span>
+            </div>
+          ) : (
+            <>
+              {(lecture.videoUrl || lecture.audioUrl) ? (
+                <button
+                  type="button"
+                  onClick={removeMedia}
+                  className="text-[10px] font-mono text-rose-400 hover:text-rose-300 transition hover:bg-rose-500/5 px-2 py-1 rounded border border-rose-500/15 cursor-pointer"
+                >
+                  Remove Material
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1 text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 px-2.5 py-1 rounded transition cursor-pointer">
+                    <UploadCloud className="w-3 h-3" />
+                    <span>Upload Video</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => handleFileChange(e, "video")}
+                    />
+                  </label>
+                  <label className="flex items-center gap-1 text-[10px] font-mono bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20 px-2.5 py-1 rounded transition cursor-pointer">
+                    <UploadCloud className="w-3 h-3" />
+                    <span>Upload Audio</span>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      className="hidden"
+                      onChange={(e) => handleFileChange(e, "audio")}
+                    />
+                  </label>
+                </div>
+              )}
+            </>
+          )}
+          {uploadError && (
+            <span className="text-[10px] font-mono text-rose-500 bg-rose-500/5 px-2 py-0.5 rounded border border-rose-500/10">
+              ⚠️ {uploadError}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminApp() {
   const [apps, setApps] = useState<SaaSApp[]>([]);
@@ -115,6 +334,125 @@ export default function AdminApp() {
   const [adminNotification, setAdminNotification] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingAppId, setEditingAppId] = useState<number | null>(null);
+
+  // Curriculum Management states
+  const [selectedCurriculumCourse, setSelectedCurriculumCourse] = useState<SaaSApp | null>(null);
+  const [curriculumChapters, setCurriculumChapters] = useState<any[]>([]);
+
+  const handleManageCurriculum = (app: SaaSApp) => {
+    setSelectedCurriculumCourse(app);
+    if (app.curriculum) {
+      try {
+        const parsed = JSON.parse(app.curriculum);
+        if (Array.isArray(parsed)) {
+          setCurriculumChapters(parsed);
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to parse app curriculum:", e);
+      }
+    }
+    // Fallback default chapters so they have a template if empty
+    setCurriculumChapters([
+      {
+        title: "Block 1: Introduction and Core Concepts",
+        lectures: [
+          { id: "1-1", title: "1. Welcome and Course Overview", duration: "10:15", videoSimType: "intro", freePreview: true }
+        ]
+      }
+    ]);
+  };
+
+  const handleAddChapter = () => {
+    setCurriculumChapters([
+      ...curriculumChapters,
+      {
+        title: `Block ${curriculumChapters.length + 1}: New Chapter Title`,
+        lectures: []
+      }
+    ]);
+  };
+
+  const handleUpdateChapterTitle = (chapIdx: number, title: string) => {
+    const updated = [...curriculumChapters];
+    updated[chapIdx].title = title;
+    setCurriculumChapters(updated);
+  };
+
+  const handleDeleteChapter = (chapIdx: number) => {
+    const updated = curriculumChapters.filter((_, idx) => idx !== chapIdx);
+    setCurriculumChapters(updated);
+  };
+
+  const handleAddLecture = (chapIdx: number) => {
+    const updated = [...curriculumChapters];
+    const nextLecNum = (updated[chapIdx].lectures || []).length + 1;
+    if (!updated[chapIdx].lectures) {
+      updated[chapIdx].lectures = [];
+    }
+    updated[chapIdx].lectures.push({
+      id: `${chapIdx + 1}-${nextLecNum}-${Date.now()}`,
+      title: `${nextLecNum}. New Lesson Title`,
+      duration: "10:00",
+      videoSimType: "setup",
+      freePreview: false
+    });
+    setCurriculumChapters(updated);
+  };
+
+  const handleUpdateLecture = (chapIdx: number, lecIdx: number, fields: any) => {
+    const updated = [...curriculumChapters];
+    updated[chapIdx].lectures[lecIdx] = {
+      ...updated[chapIdx].lectures[lecIdx],
+      ...fields
+    };
+    setCurriculumChapters(updated);
+  };
+
+  const handleDeleteLecture = (chapIdx: number, lecIdx: number) => {
+    const updated = [...curriculumChapters];
+    updated[chapIdx].lectures = updated[chapIdx].lectures.filter((_: any, idx: number) => idx !== lecIdx);
+    setCurriculumChapters(updated);
+  };
+
+  const handleSaveCurriculum = async () => {
+    if (!selectedCurriculumCourse) return;
+    setSubmitting(true);
+    setAdminNotification(null);
+    try {
+      const token = adminToken || safeSessionStorage.getItem("admin-token");
+      
+      // Calculate total lessonsCount and set it automatically
+      const totalLessons = curriculumChapters.reduce((acc, chap) => acc + (chap.lectures?.length || 0), 0);
+
+      const res = await fetch(`/api/apps/${selectedCurriculumCourse.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          ...selectedCurriculumCourse,
+          curriculum: JSON.stringify(curriculumChapters),
+          lessonsCount: totalLessons
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to update course curriculum.");
+      }
+
+      const updatedCourse = await res.json();
+      setApps(apps.map(a => a.id === selectedCurriculumCourse.id ? updatedCourse : a));
+      setAdminNotification({ type: "success", text: `Curriculum and lessons successfully saved for "${updatedCourse.name}"!` });
+      setSelectedCurriculumCourse(null);
+    } catch (err: any) {
+      alert("Error saving: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleStartEdit = (app: SaaSApp) => {
     setEditingAppId(app.id);
@@ -268,6 +606,65 @@ export default function AdminApp() {
     }
   };
 
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [feedbacksLoading, setFeedbacksLoading] = useState(false);
+  const [onboardComments, setOnboardComments] = useState<Record<number, string>>({});
+  const [submittingOnboardId, setSubmittingOnboardId] = useState<number | null>(null);
+
+  const fetchAllFeedbacks = async () => {
+    try {
+      setFeedbacksLoading(true);
+      const token = adminToken || safeSessionStorage.getItem("admin-token");
+      const res = await fetch("/api/admin/feedback", {
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFeedbacks(data);
+      }
+    } catch (e) {
+      console.error("Failed to load feedbacks:", e);
+    } finally {
+      setFeedbacksLoading(false);
+    }
+  };
+
+  const handleOnboardFeedback = async (id: number) => {
+    const comment = onboardComments[id] || "";
+    if (!comment.trim()) {
+      alert("Please enter a response/comment to describe how this feedback was onboarded.");
+      return;
+    }
+
+    try {
+      setSubmittingOnboardId(id);
+      const token = adminToken || safeSessionStorage.getItem("admin-token");
+      const res = await fetch(`/api/admin/feedback/${id}/onboard`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ onboardedComment: comment.trim() })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to onboard feedback.");
+      }
+
+      const updated = await res.json();
+      setFeedbacks(feedbacks.map(f => f.id === id ? updated : f));
+      setOnboardComments(prev => ({ ...prev, [id]: "" }));
+    } catch (err: any) {
+      alert(err.message || "An error occurred during onboarding.");
+    } finally {
+      setSubmittingOnboardId(null);
+    }
+  };
+
   const handleLogout = () => {
     setAdminToken(null);
     safeSessionStorage.removeItem("admin-token");
@@ -359,6 +756,7 @@ export default function AdminApp() {
   useEffect(() => {
     if (adminToken) {
       fetchTrends();
+      fetchAllFeedbacks();
     }
   }, [adminToken, apps.length]);
 
@@ -424,7 +822,15 @@ export default function AdminApp() {
         setFormDuration("12.5 hrs");
         setFormLessonsCount("24");
         setFormRating("4.8");
-        setAdminNotification({ type: "success", text: `"${updatedOrNewApp.name}" has been certified and successfully published!` });
+        if (formCategory === "courses") {
+          setAdminNotification({ 
+            type: "success", 
+            text: `"${updatedOrNewApp.name}" has been successfully published! A 50% promotional campaign for the next 30 days has been automatically generated.` 
+          });
+          fetchAds();
+        } else {
+          setAdminNotification({ type: "success", text: `"${updatedOrNewApp.name}" has been certified and successfully published!` });
+        }
       }
     } catch (err: any) {
       setAdminNotification({ type: "error", text: err.message || "An exception occurred during operation" });
@@ -484,7 +890,7 @@ export default function AdminApp() {
       {/* PROFESSIONAL POLISH SYSTEM HEADER */}
       <header className="h-16 flex items-center justify-between px-8 border-b border-app-border bg-app-header-bg backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md flex items-center justify-center font-black text-xs tracking-tighter bg-app-text text-app-bg">V7</div>
+          <div className="w-8 h-8 rounded-md flex items-center justify-center font-black text-xs tracking-tighter bg-app-text text-app-bg">V79</div>
           <span className="font-bold text-lg tracking-tighter text-app-text font-display">VISION79</span>
           <div className="h-4 w-px bg-app-border mx-2"></div>
           <span className="text-xs text-app-text-muted font-mono tracking-widest uppercase">Admin System</span>
@@ -838,7 +1244,7 @@ export default function AdminApp() {
 
                         {formCategory === "courses" && (
                           <div id="course-details-form-section" className="bg-violet-500/5 p-3.5 rounded-xl border border-violet-500/15 space-y-3.5 my-3">
-                            <span className="text-[10px] font-mono uppercase text-violet-500 dark:text-violet-400 block tracking-wider font-bold">Course Meta Fields (Udemy Style)</span>
+                            <span className="text-[10px] font-mono uppercase text-violet-500 dark:text-violet-400 block tracking-wider font-bold">Course Meta Fields (Vision79 Style)</span>
                             
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1">
@@ -1052,10 +1458,20 @@ export default function AdminApp() {
                                 </td>
                                 <td className="py-3 text-right">
                                   <div className="flex items-center justify-end space-x-1.5">
+                                    {app.category === "courses" && (
+                                      <button
+                                        onClick={() => handleManageCurriculum(app)}
+                                        title="Manage Course Materials"
+                                        className="p-1.5 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 border border-indigo-500/10 hover:border-indigo-500/30 rounded transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+                                      >
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                        <span className="text-[9px] font-mono font-bold tracking-wider uppercase hidden md:inline">Materials 📚</span>
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() => handleStartEdit(app)}
                                       title="Edit App Details"
-                                      className={`p-1.5 rounded transition-colors ${
+                                      className={`p-1.5 rounded transition-colors cursor-pointer ${
                                         editingAppId === app.id
                                           ? "text-indigo-400 bg-indigo-500/10 border border-indigo-500/20"
                                           : "text-app-text-muted hover:text-indigo-400 hover:bg-app-btn-sec"
@@ -1066,7 +1482,7 @@ export default function AdminApp() {
                                     <button
                                       onClick={() => handleDeleteApp(app.id)}
                                       title="Delete App"
-                                      className="p-1.5 text-app-text-muted hover:text-rose-500 hover:bg-app-btn-sec rounded transition-colors"
+                                      className="p-1.5 text-app-text-muted hover:text-rose-500 hover:bg-app-btn-sec rounded transition-colors cursor-pointer"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -1080,6 +1496,154 @@ export default function AdminApp() {
                     </div>
 
                   </div>
+
+                  {/* COMPREHENSIVE CURRICULUM & MATERIALS MANAGER */}
+                  <section id="curriculum-manager-section" className="glass rounded-2xl p-6 bg-indigo-500/5 border border-indigo-500/10 space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-app-border/65">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-5 h-5 text-indigo-400" />
+                          <h3 className="text-base font-bold font-display text-app-text tracking-tight">Vision79 Comprehensive Curriculum & Materials Manager</h3>
+                        </div>
+                        <p className="text-xs text-app-text-sec">Create, edit, and organize multi-chapter structures, video simulations, and lesson modules for your custom Vision79 courses.</p>
+                      </div>
+                      
+                      {/* Course Selector Dropdown */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-mono text-app-text-muted select-none">Active Course:</span>
+                        <select
+                          value={selectedCurriculumCourse?.id || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "") {
+                              setSelectedCurriculumCourse(null);
+                              setCurriculumChapters([]);
+                            } else {
+                              const courseApp = apps.find(a => a.id === Number(val));
+                              if (courseApp) {
+                                handleManageCurriculum(courseApp);
+                              }
+                            }
+                          }}
+                          className="bg-app-input border border-app-input-border text-app-text text-xs rounded-lg p-2 focus:outline-none focus:border-indigo-500/50 min-w-[200px]"
+                        >
+                          <option value="">-- Choose Course --</option>
+                          {apps.filter(app => app.category === "courses").map(course => (
+                            <option key={course.id} value={course.id}>{course.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Editor Space */}
+                    {!selectedCurriculumCourse ? (
+                      <div className="text-center py-12 px-4 rounded-xl border border-dashed border-app-border/60 bg-app-aside-bg/10 flex flex-col items-center justify-center space-y-3 animate-fade-in-once">
+                        <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+                          <BookOpen className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-semibold text-app-text">No course selected</p>
+                        <p className="text-xs text-app-text-muted max-w-md mx-auto">Select a course from the dropdown menu above (or click "Materials 📚" in the registrar table below) to edit its curriculum, add lessons, set video playback lengths, and custom previews.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6 animate-fade-in-once">
+                        {/* Selected Course summary banner */}
+                        <div className="flex items-center justify-between p-3.5 bg-indigo-500/5 rounded-xl border border-indigo-500/15">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-mono text-indigo-400 font-bold uppercase tracking-wider block">Currently Modifying:</span>
+                            <span className="text-xs font-bold text-app-text">{selectedCurriculumCourse.name}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedCurriculumCourse(null);
+                                setCurriculumChapters([]);
+                              }}
+                              className="px-3 py-1.5 border border-app-border hover:bg-app-btn-sec rounded-lg text-[11px] font-semibold text-app-text transition cursor-pointer"
+                            >
+                              Close Editor
+                            </button>
+                            <button
+                              onClick={handleSaveCurriculum}
+                              disabled={submitting}
+                              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg text-[11px] transition flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              {submitting ? "Saving..." : "Save Materials"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Curriculum chapter builder */}
+                        <div className="space-y-6">
+                          {curriculumChapters.length === 0 ? (
+                            <div className="text-center py-8 space-y-3">
+                              <p className="text-xs text-app-text-muted font-mono">This course does not have any curriculum sections yet.</p>
+                              <button
+                                onClick={handleAddChapter}
+                                className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold font-mono transition cursor-pointer"
+                              >
+                                ➕ Add First Chapter Block
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="space-y-6">
+                              {curriculumChapters.map((chapter, chapIdx) => (
+                                <div key={chapIdx} className="border border-app-border/70 rounded-xl bg-app-aside-bg/10 p-4 space-y-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-app-border/40">
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <span className="text-xs font-mono font-bold text-indigo-400 shrink-0">Block {chapIdx + 1}</span>
+                                      <input
+                                        type="text"
+                                        value={chapter.title}
+                                        onChange={(e) => handleUpdateChapterTitle(chapIdx, e.target.value)}
+                                        placeholder="Block Title (e.g., Chapter 1: Foundations)"
+                                        className="flex-1 bg-app-input border border-app-input-border text-app-text font-bold text-xs p-2 rounded-lg focus:outline-none focus:border-indigo-500/50"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteChapter(chapIdx)}
+                                      className="text-[10px] font-mono text-rose-500 hover:text-rose-400 hover:bg-rose-500/5 border border-rose-500/10 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                                    >
+                                      Delete Block
+                                    </button>
+                                  </div>
+
+                                  {/* Lectures inside chapter */}
+                                  <div className="space-y-3 pl-2 sm:pl-4">
+                                    {chapter.lectures && chapter.lectures.map((lecture: any, lecIdx: number) => (
+                                      <LectureItemRow
+                                        key={lecture.id || lecIdx}
+                                        lecture={lecture}
+                                        chapIdx={chapIdx}
+                                        lecIdx={lecIdx}
+                                        onUpdate={handleUpdateLecture}
+                                        onDelete={handleDeleteLecture}
+                                        adminToken={adminToken}
+                                      />
+                                    ))}
+
+                                    <button
+                                      onClick={() => handleAddLecture(chapIdx)}
+                                      className="w-full py-2 border border-dashed border-app-border hover:border-indigo-500/40 hover:bg-indigo-500/5 text-indigo-400 rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                    >
+                                      ➕ Add Lecture / Lesson Material
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+
+                              <button
+                                onClick={handleAddChapter}
+                                className="w-full py-3 bg-app-btn-sec/30 hover:bg-app-btn-sec border border-app-border text-app-text font-bold rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                ➕ Add New Block / Chapter
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </section>
 
                   {/* CAROUSEL ADS CONTROL WORKSPACE */}
                   <div className="pt-8 border-t border-app-border/45 space-y-6">
@@ -1237,6 +1801,255 @@ export default function AdminApp() {
 
                     </div>
                   </div>
+
+                  {/* USER FEEDBACK & ONBOARDING WORKSPACE */}
+                  <div className="pt-8 border-t border-app-border/45 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-indigo-500 animate-pulse" />
+                          <h3 className="text-base font-bold font-display text-app-text tracking-tight">User Feedback & Rating Management</h3>
+                        </div>
+                        <p className="text-xs text-app-text-sec font-mono">
+                          Review suggestions, view overall quality stars, and type your response to show they are "onboarded" and "implemented" inside V79.
+                        </p>
+                      </div>
+                      <button
+                        onClick={fetchAllFeedbacks}
+                        className="self-start sm:self-auto text-xs px-3 py-1.5 bg-app-btn-sec border border-app-border text-app-text hover:bg-app-btn-sec/80 rounded-lg cursor-pointer"
+                      >
+                        Synch Feedbacks
+                      </button>
+                    </div>
+
+                    <div className="glass p-6 rounded-2xl bg-app-aside-bg/30">
+                      {feedbacksLoading ? (
+                        <div className="text-xs text-app-text-muted font-mono py-8 text-center">
+                          Refinding feedbacks in SQLite registries...
+                        </div>
+                      ) : feedbacks.length === 0 ? (
+                        <div className="text-xs text-app-text-muted font-mono py-12 text-center bg-app-btn-sec/10 rounded-xl border border-dashed border-app-border">
+                          No user feedback items found in the database.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {feedbacks.map((f) => (
+                            <div
+                              key={f.id}
+                              className={`p-4 rounded-xl border text-xs space-y-3.5 flex flex-col justify-between ${
+                                f.onboarded === 1
+                                  ? "bg-emerald-500/5 border-emerald-500/20"
+                                  : "bg-app-btn-sec/15 border-app-border/60 hover:border-app-border"
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <span className="font-bold text-app-text text-[13px] block">
+                                      {f.userName || "Anonymous student"}
+                                    </span>
+                                    <span className="text-[10px] text-indigo-400 font-medium font-mono">
+                                      App: {f.appName || `App #${f.appId}`}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex gap-0.5 text-amber-400 shrink-0">
+                                    {Array.from({ length: 5 }).map((_, idx) => (
+                                      <Star
+                                        key={idx}
+                                        className={`w-3.5 h-3.5 ${idx < f.rating ? "fill-amber-400 text-amber-400" : "text-zinc-600"}`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <p className="text-app-text-sec text-[11px] leading-relaxed italic">
+                                  "{f.comment}"
+                                </p>
+
+                                <span className="text-[9px] text-app-text-muted font-mono block">
+                                  Received: {new Date(f.createdAt).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  })}
+                                </span>
+                              </div>
+
+                              <div className="pt-3 border-t border-app-border/40 space-y-2">
+                                {f.onboarded === 1 ? (
+                                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 space-y-1">
+                                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 font-mono uppercase tracking-wide">
+                                      <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                                      Onboarded & Implemented ✅
+                                    </div>
+                                    <p className="text-[10px] text-app-text-sec leading-relaxed italic font-mono pl-5">
+                                      "{f.onboardedComment}"
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <textarea
+                                      value={onboardComments[f.id] || ""}
+                                      onChange={(e) => setOnboardComments({ ...onboardComments, [f.id]: e.target.value })}
+                                      placeholder="Explain how this feedback is onboarded/implemented in V79..."
+                                      rows={2}
+                                      className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-[10px] placeholder:text-app-text-muted/65 focus:outline-none focus:border-app-border/80 leading-normal resize-none font-mono"
+                                    />
+                                    <button
+                                      onClick={() => handleOnboardFeedback(f.id)}
+                                      disabled={submittingOnboardId === f.id}
+                                      className="w-full py-1.5 text-[10px] font-mono tracking-wider uppercase font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition flex items-center justify-center gap-1"
+                                    >
+                                      {submittingOnboardId === f.id ? (
+                                        <>
+                                          <div className="w-2.5 h-2.5 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                          Processing...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="w-3 h-3 text-indigo-200" />
+                                          Mark as Onboarded
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {selectedCurriculumCourse && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, y: 15 }}
+                    animate={{ scale: 1, y: 0 }}
+                    exit={{ scale: 0.95, y: 15 }}
+                    className="bg-app-bg border border-app-border rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-app-text"
+                  >
+                    {/* Header */}
+                    <div className="p-5 border-b border-app-border flex items-center justify-between bg-app-aside-bg/40">
+                      <div className="flex items-center gap-2.5">
+                        <BookOpen className="w-5 h-5 text-indigo-400" />
+                        <div>
+                          <h3 className="font-bold font-display text-base tracking-tight">Curriculum & Course Materials</h3>
+                          <p className="text-xs text-app-text-muted">{selectedCurriculumCourse.name}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedCurriculumCourse(null)}
+                        className="p-1.5 hover:bg-app-btn-sec/50 border border-app-border/40 rounded-lg text-app-text-muted hover:text-app-text transition cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Content Scroll */}
+                    <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-app-bg/50">
+                      {curriculumChapters.length === 0 ? (
+                        <div className="text-center py-10 space-y-3">
+                          <p className="text-sm text-app-text-muted font-mono">This course does not have any curriculum sections yet.</p>
+                          <button
+                            onClick={handleAddChapter}
+                            className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-xs font-semibold font-mono transition cursor-pointer"
+                          >
+                            ➕ Add First Chapter
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {curriculumChapters.map((chapter, chapIdx) => (
+                            <div key={chapIdx} className="border border-app-border/70 rounded-xl bg-app-aside-bg/20 p-4 space-y-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-app-border/40">
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span className="text-xs font-mono font-bold text-indigo-400 shrink-0">Chapter {chapIdx + 1}</span>
+                                  <input
+                                    type="text"
+                                    value={chapter.title}
+                                    onChange={(e) => handleUpdateChapterTitle(chapIdx, e.target.value)}
+                                    placeholder="Chapter Title"
+                                    className="flex-1 bg-app-input border border-app-input-border text-app-text font-bold text-xs p-2 rounded-lg focus:outline-none focus:border-indigo-500/50"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteChapter(chapIdx)}
+                                  className="text-[10px] font-mono text-rose-500 hover:text-rose-400 hover:bg-rose-500/5 border border-rose-500/10 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                                >
+                                  Delete Chapter
+                                </button>
+                              </div>
+
+                              {/* Lectures inside chapter */}
+                              <div className="space-y-3 pl-2 sm:pl-4">
+                                {chapter.lectures && chapter.lectures.map((lecture: any, lecIdx: number) => (
+                                  <LectureItemRow
+                                    key={lecture.id || lecIdx}
+                                    lecture={lecture}
+                                    chapIdx={chapIdx}
+                                    lecIdx={lecIdx}
+                                    onUpdate={handleUpdateLecture}
+                                    onDelete={handleDeleteLecture}
+                                    adminToken={adminToken}
+                                  />
+                                ))}
+
+                                <button
+                                  onClick={() => handleAddLecture(chapIdx)}
+                                  className="w-full py-2 border border-dashed border-app-border hover:border-indigo-500/40 hover:bg-indigo-500/5 text-indigo-400 rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  ➕ Add Lecture / Lesson Material
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          <button
+                            onClick={handleAddChapter}
+                            className="w-full py-3 bg-app-btn-sec/50 hover:bg-app-btn-sec border border-app-border text-app-text font-bold rounded-xl text-xs font-mono transition flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            ➕ Add New Chapter / Section
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-4 border-t border-app-border flex items-center justify-between bg-app-aside-bg/40">
+                      <p className="text-xs text-app-text-muted font-mono">
+                        Total curriculum lessons: {curriculumChapters.reduce((acc, chap) => acc + (chap.lectures?.length || 0), 0)}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setSelectedCurriculumCourse(null)}
+                          className="px-4 py-2 border border-app-border hover:bg-app-btn-sec rounded-xl text-xs font-semibold text-app-text transition cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveCurriculum}
+                          disabled={submitting}
+                          className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          {submitting ? "Saving material..." : "Save Materials Curriculum ✨"}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>

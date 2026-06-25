@@ -26,6 +26,15 @@ import { AppLogo } from "./components/AppLogo";
 import { CourseDetailPage } from "./components/CourseDetailPage";
 import { ServicesPriceList } from "./components/ServicesPriceList";
 
+const isPromoActive = (app: SaaSApp) => {
+  if (app.category !== "courses" || !app.createdAt) return false;
+  const createdDate = new Date(app.createdAt);
+  const now = new Date();
+  const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays <= 30;
+};
+
 export default function App() {
   const [apps, setApps] = useState<SaaSApp[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -172,7 +181,7 @@ export default function App() {
       {/* PROFESSIONAL POLISH SYSTEM HEADER */}
       <header className="h-16 flex items-center justify-between px-8 border-b border-app-border bg-app-header-bg backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedCategory("all"); setSearchQuery(""); setSelectedCourse(null); setShowServicesPriceList(false); }}>
-          <div className="w-8 h-8 rounded-md flex items-center justify-center font-black text-xs tracking-tighter bg-app-text text-app-bg">V7</div>
+          <div className="w-8 h-8 rounded-md flex items-center justify-center font-black text-xs tracking-tighter bg-app-text text-app-bg">V79</div>
           <span className="font-bold text-lg tracking-tighter text-app-text font-display">VISION79</span>
           <div className="h-4 w-px bg-app-border mx-2"></div>
           <span className="text-xs text-app-text-muted font-mono tracking-widest uppercase">Marketplace</span>
@@ -216,11 +225,11 @@ export default function App() {
                 onClick={() => handleSelectCategory("all")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                   selectedCategory === "all" && !showServicesPriceList
-                    ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
-                    : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
+                    ? "bg-sky-500/10 border border-sky-500/20 text-sky-500 dark:text-sky-400 font-semibold"
+                    : "text-app-text-sec hover:text-sky-500 dark:hover:text-sky-400 hover:bg-sky-500/[0.04] border border-transparent"
                 }`}
               >
-                <Layers className="w-4 h-4 stroke-[1.8]" />
+                <Layers className="w-4 h-4 stroke-[1.8] text-sky-500 dark:text-sky-400" />
                 All Tools
               </li>
               <li 
@@ -228,11 +237,11 @@ export default function App() {
                 onClick={() => handleSelectCategory("web")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                   selectedCategory === "web" && !showServicesPriceList
-                    ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
-                    : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
+                    ? "bg-purple-500/10 border border-purple-500/20 text-purple-500 dark:text-purple-400 font-semibold"
+                    : "text-app-text-sec hover:text-purple-500 dark:hover:text-purple-400 hover:bg-purple-500/[0.04] border border-transparent"
                 }`}
               >
-                <Globe className="w-4 h-4 stroke-[1.8]" />
+                <Globe className="w-4 h-4 stroke-[1.8] text-purple-500 dark:text-purple-400" />
                 Web Apps
               </li>
               <li 
@@ -240,11 +249,11 @@ export default function App() {
                 onClick={() => handleSelectCategory("desktop")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                   selectedCategory === "desktop" && !showServicesPriceList
-                    ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
-                    : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
+                    ? "bg-amber-500/10 border border-amber-500/20 text-amber-500 dark:text-amber-400 font-semibold"
+                    : "text-app-text-sec hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-500/[0.04] border border-transparent"
                 }`}
               >
-                <Monitor className="w-4 h-4 stroke-[1.8]" />
+                <Monitor className="w-4 h-4 stroke-[1.8] text-amber-500 dark:text-amber-400" />
                 Desktop
               </li>
               <li 
@@ -252,11 +261,11 @@ export default function App() {
                 onClick={() => handleSelectCategory("games")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                   selectedCategory === "games" && !showServicesPriceList
-                    ? "bg-app-btn-sec border border-app-border text-app-text font-medium"
-                    : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
+                    ? "bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 font-semibold"
+                    : "text-app-text-sec hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-500/[0.04] border border-transparent"
                 }`}
               >
-                <Gamepad2 className="w-4 h-4 stroke-[1.8]" />
+                <Gamepad2 className="w-4 h-4 stroke-[1.8] text-rose-500 dark:text-rose-400" />
                 Games
               </li>
               <li 
@@ -264,11 +273,11 @@ export default function App() {
                 onClick={() => handleSelectCategory("courses")}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                   selectedCategory === "courses" && !showServicesPriceList
-                    ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-semibold"
-                    : "text-app-text-sec hover:text-app-text hover:bg-app-btn-sec/55 border border-transparent"
+                    ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 font-semibold"
+                    : "text-app-text-sec hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-500/[0.04] border border-transparent"
                 }`}
               >
-                <GraduationCap className="w-4 h-4 stroke-[1.8] text-indigo-400" />
+                <GraduationCap className="w-4 h-4 stroke-[1.8] text-indigo-500 dark:text-indigo-400" />
                 Courses
               </li>
 
@@ -278,11 +287,11 @@ export default function App() {
                 onClick={() => { setShowServicesPriceList(true); setSelectedCourse(null); }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-250 border ${
                   showServicesPriceList
-                    ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-400 font-extrabold shadow-sm"
-                    : "text-app-text-sec hover:text-emerald-400 hover:bg-emerald-500/[0.04] border-transparent"
+                    ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-500 dark:text-emerald-400 font-extrabold shadow-sm"
+                    : "text-app-text-sec hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-500/[0.04] border-transparent"
                 }`}
               >
-                <Coins className="w-4 h-4 stroke-[1.8] text-emerald-400" />
+                <Coins className="w-4 h-4 stroke-[1.8] text-emerald-500 dark:text-emerald-400" />
                 Services Price List
               </li>
             </ul>
@@ -353,7 +362,14 @@ export default function App() {
                           transition={{ duration: 0.3 }}
                           onClick={() => {
                             const link = ads[currentAdIndex]?.linkUrl;
-                            if (link && (link === "/services-pricing" || link.includes("service") || link.includes("pricing"))) {
+                            if (link && (link.startsWith("course:") || link.includes("/courses/"))) {
+                              const courseIdStr = link.split("/").pop()?.split(":").pop();
+                              const foundCourse = apps.find(a => a.id === Number(courseIdStr));
+                              if (foundCourse) {
+                                setSelectedCourse(foundCourse);
+                                setShowServicesPriceList(false);
+                              }
+                            } else if (link && (link === "/services-pricing" || link.includes("service") || link.includes("pricing"))) {
                               setShowServicesPriceList(true);
                               setSelectedCourse(null);
                             } else if (link) {
@@ -504,6 +520,9 @@ export default function App() {
                         const isCourse = app.category === "courses";
                         
                         const priceNum = app.price !== undefined && app.price !== null ? Number(app.price) : 0;
+                        const hasPromo = isCourse && isPromoActive(app);
+                        const promoPriceNum = priceNum * 0.5;
+
                         const pricingText = 
                           isCourse ? (priceNum > 0 ? `$${priceNum.toFixed(2)}` : "Free Masterclass") :
                           app.pricingType === "free" ? "Free" : 
@@ -541,13 +560,24 @@ export default function App() {
                                   <span className={`text-[10px] px-2 py-0.5 rounded uppercase ${badgeColor}`}>
                                     {isCourse ? "Course 📚" : app.category}
                                   </span>
-                                  <span className={`text-[10px] px-2 py-0.5 border rounded uppercase ${
-                                    isCourse 
-                                      ? "bg-violet-500/10 text-violet-500 border-violet-500/20 font-bold font-mono" 
-                                      : "border-app-border bg-app-btn-sec/50 text-app-text-muted"
-                                  }`}>
-                                    {pricingText}
-                                  </span>
+                                  {hasPromo ? (
+                                    <span className="flex flex-col items-end gap-0.5">
+                                      <span className="text-[9px] line-through text-app-text-muted font-mono">
+                                        ${priceNum.toFixed(2)}
+                                      </span>
+                                      <span className="text-[10px] px-2 py-0.5 border rounded uppercase bg-emerald-500/15 text-emerald-400 border-emerald-500/25 font-bold font-mono animate-pulse">
+                                        🔥 ${promoPriceNum.toFixed(2)} (50% OFF)
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[10px] px-2 py-0.5 border rounded uppercase ${
+                                      isCourse 
+                                        ? "bg-violet-500/10 text-violet-500 border-violet-500/20 font-bold font-mono" 
+                                        : "border-app-border bg-app-btn-sec/50 text-app-text-muted"
+                                    }`}>
+                                      {pricingText}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 

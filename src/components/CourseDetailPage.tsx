@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Play, 
@@ -20,7 +20,8 @@ import {
   Sparkles, 
   Code, 
   FileText,
-  BadgeAlert
+  BadgeAlert,
+  Headphones
 } from "lucide-react";
 import { SaaSApp } from "../types";
 
@@ -35,6 +36,8 @@ interface Lecture {
   duration: string;
   videoSimType: "intro" | "setup" | "deepdive" | "advanced";
   freePreview?: boolean;
+  videoUrl?: string;
+  audioUrl?: string;
 }
 
 interface Chapter {
@@ -48,7 +51,18 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
   const [activeLecture, setActiveLecture] = useState<Lecture | null>(null);
   
   // Checking/resetting purchase state based on price/type
-  const displayPrice = course.price !== undefined && course.price !== null ? Number(course.price) : 94.99;
+  const isPromoActive = (c: any) => {
+    if (c.category !== "courses" || !c.createdAt) return false;
+    const createdDate = new Date(c.createdAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30;
+  };
+
+  const hasPromo = isPromoActive(course);
+  const originalPrice = course.price !== undefined && course.price !== null ? Number(course.price) : 94.99;
+  const displayPrice = hasPromo ? originalPrice * 0.5 : originalPrice;
   const isPaid = displayPrice > 0 || course.pricingType === "premium";
 
   useEffect(() => {
@@ -74,8 +88,74 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
     2: false
   });
 
-  // Active Info Tab: 'curriculum' | 'notes' | 'qa' | 'resources'
-  const [activeTab, setActiveTab] = useState<"curriculum" | "notes" | "qa" | "resources">("curriculum");
+  // Active Info Tab: 'curriculum' | 'notes' | 'qa' | 'resources' | 'feedback'
+  const [activeTab, setActiveTab] = useState<"curriculum" | "notes" | "qa" | "resources" | "feedback">("curriculum");
+
+  // Feedback/Ratings states
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [ratingInput, setRatingInput] = useState(5);
+  const [commentInput, setCommentInput] = useState("");
+  const [userNameInput, setUserNameInput] = useState("");
+
+  const fetchFeedbacks = async () => {
+    try {
+      const res = await fetch(`/api/feedback?appId=${course.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFeedbacks(data);
+      }
+    } catch (e) {
+      console.error("Error fetching feedbacks:", e);
+    }
+  };
+
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentInput.trim()) {
+      setSubmitError("Please write a suggestion or feedback comment.");
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError("");
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appId: course.id,
+          appName: course.name,
+          rating: ratingInput,
+          comment: commentInput,
+          userName: userNameInput.trim() || "Anonymous Student"
+        })
+      });
+      if (res.ok) {
+        setSubmitSuccess(true);
+        setCommentInput("");
+        setRatingInput(5);
+        fetchFeedbacks();
+      } else {
+        const data = await res.json();
+        setSubmitError(data.error || "Failed to submit feedback.");
+      }
+    } catch (err) {
+      setSubmitError("Network error. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeedbacks();
+    // Reset submission feedback states when course changes
+    setSubmitSuccess(false);
+    setSubmitError("");
+    setCommentInput("");
+    setRatingInput(5);
+  }, [course.id]);
 
   // Notes state
   const [studentNote, setStudentNote] = useState<string>(() => {
@@ -128,38 +208,50 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const [canvasModeText, setCanvasModeText] = useState("Hover play to stream secure masterclass canvas context...");
 
-  const chapters: Chapter[] = [
-    {
-      title: "Block 1: Production Core Architecture Swaps & Setup",
-      lectures: [
-        { id: "1-1", title: "1. Core Framework Setup and Configuration Files", duration: "12:15", videoSimType: "intro", freePreview: true },
-        { id: "1-2", title: "2. Structuring TypeScript Enums and Types Safely", duration: "18:40", videoSimType: "setup" },
-        { id: "1-3", title: "3. Hot-Swapping Sandbox Server Port Inbound Channels", duration: "22:05", videoSimType: "setup" }
-      ]
-    },
-    {
-      title: "Block 2: High Concurrency State Engines & DB Mappings",
-      lectures: [
-        { id: "2-1", title: "4. SQLite schemas modeling & Dynamic Alter Migrations", duration: "32:10", videoSimType: "deepdive" },
-        { id: "2-2", title: "5. Lazy-initializing SDK clients and handling failures", duration: "25:30", videoSimType: "deepdive" },
-        { id: "2-3", title: "6. Handling CORS & OAuth flows inside Sandboxed iFrames", duration: "29:15", videoSimType: "deepdive" }
-      ]
-    },
-    {
-      title: "Block 3: Production Builds & Ingress Traffic Optimization",
-      lectures: [
-        { id: "3-1", title: "7. Compiling TypeScript output bundles via fast esbuild", duration: "44:00", videoSimType: "advanced" },
-        { id: "3-2", title: "8. Deploying standalone Cloud Container ports safely", duration: "38:50", videoSimType: "advanced" }
-      ]
+  const chapters: Chapter[] = useMemo(() => {
+    if (course.curriculum) {
+      try {
+        const parsed = JSON.parse(course.curriculum);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed as Chapter[];
+        }
+      } catch (e) {
+        console.error("Failed to parse course curriculum JSON:", e);
+      }
     }
-  ];
+    return [
+      {
+        title: "Block 1: Production Core Architecture Swaps & Setup",
+        lectures: [
+          { id: "1-1", title: "1. Core Framework Setup and Configuration Files", duration: "12:15", videoSimType: "intro", freePreview: true },
+          { id: "1-2", title: "2. Structuring TypeScript Enums and Types Safely", duration: "18:40", videoSimType: "setup" },
+          { id: "1-3", title: "3. Hot-Swapping Sandbox Server Port Inbound Channels", duration: "22:05", videoSimType: "setup" }
+        ]
+      },
+      {
+        title: "Block 2: High Concurrency State Engines & DB Mappings",
+        lectures: [
+          { id: "2-1", title: "4. SQLite schemas modeling & Dynamic Alter Migrations", duration: "32:10", videoSimType: "deepdive" },
+          { id: "2-2", title: "5. Lazy-initializing SDK clients and handling failures", duration: "25:30", videoSimType: "deepdive" },
+          { id: "2-3", title: "6. Handling CORS & OAuth flows inside Sandboxed iFrames", duration: "29:15", videoSimType: "deepdive" }
+        ]
+      },
+      {
+        title: "Block 3: Production Builds & Ingress Traffic Optimization",
+        lectures: [
+          { id: "3-1", title: "7. Compiling TypeScript output bundles via fast esbuild", duration: "44:00", videoSimType: "advanced" },
+          { id: "3-2", title: "8. Deploying standalone Cloud Container ports safely", duration: "38:50", videoSimType: "advanced" }
+        ]
+      }
+    ];
+  }, [course.curriculum]);
 
   // Set default initial active lecture
   useEffect(() => {
-    if (!activeLecture) {
+    if (chapters.length > 0 && chapters[0].lectures.length > 0) {
       setActiveLecture(chapters[0].lectures[0]);
     }
-  }, [activeLecture]);
+  }, [course.id, chapters]);
 
   // Video simulation animation logic
   useEffect(() => {
@@ -184,7 +276,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
           "ALTER TABLE saas_apps ADD COLUMN rating REAL DEFAULT 4.7;",
           "console.log('[SQLite Migrations] SUCCESSFUL!')",
           "localStorage.setItem('premium-access', JSON.stringify(enrolled));",
-          "Refactoring categories to courses for Udemy layout sync..."
+          "Refactoring categories to courses for Vision79 layout sync..."
         ];
         const randomLine = lines[Math.floor(Math.random() * lines.length)];
         setCanvasModeText(`[STAMP: ${Math.floor(videoProgress)}%] -> ${randomLine}`);
@@ -293,11 +385,11 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
           Back to Courses Catalog
         </button>
         <span className="text-[10px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono tracking-wider px-2.5 py-0.5 rounded-full uppercase">
-          Udemy Live Masterclass
+          Vision79 Masterclass
         </span>
       </div>
 
-      {/* MIDNIGHT GRANGE UDEMY HERO banner */}
+      {/* MIDNIGHT GRANGE VISION79 HERO banner */}
       <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-indigo-950 text-white p-6 sm:p-10 border-b border-indigo-950 flex flex-col gap-4 relative overflow-hidden shadow-inner">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.1),transparent_40%)]" />
         
@@ -356,91 +448,140 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
             </div>
 
             {/* LIVE DISPLAY VIDEO SCREEN CANVAS */}
-            <div className="relative aspect-video w-full bg-gradient-to-b from-zinc-950 to-zinc-900 border-b border-app-border/20 flex flex-col items-center justify-center overflow-hidden p-6 text-center select-none">
+            <div className="relative aspect-video w-full bg-gradient-to-b from-zinc-950 to-zinc-900 border-b border-app-border/20 flex flex-col items-center justify-center overflow-hidden text-center select-none">
               
-              {/* Abstract futuristic grid backing */}
-              <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]" />
-              
-              <AnimatePresence mode="wait">
-                {isPlaying ? (
-                  <motion.div 
-                    key="playing-state"
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-4 w-full h-full flex flex-col justify-between pt-4"
-                  >
-                    <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-xs font-mono bg-zinc-900/50 backdrop-blur border border-white/5 py-1 px-3.5 rounded-full select-none w-max mx-auto">
-                      <Code className="w-3.5 h-3.5 text-indigo-400" />
-                      Live Stream Simulation (ACTIVE)
+              {activeLecture?.videoUrl ? (
+                <div className="absolute inset-0 w-full h-full bg-black z-10 select-auto">
+                  {(!isEnrolled && !activeLecture.freePreview) ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-zinc-950/95 z-20 space-y-4">
+                      <Lock className="w-12 h-12 text-indigo-400 animate-pulse" />
+                      <p className="text-sm font-semibold tracking-wide text-zinc-100 uppercase font-mono">Subscribe to unlock this Lecture 🔒</p>
+                      <p className="text-xs text-zinc-400 max-w-md">Unlock full lifetime access to all {course.lessonsCount || 24} curriculum sections today.</p>
                     </div>
-
-                    <div className="flex-1 flex items-center justify-center flex-col px-4">
-                      {/* Code Stream visualization waves */}
-                      <div className="w-full max-w-lg p-4 rounded-xl border border-indigo-500/20 bg-indigo-950/20 text-left font-mono text-[11px] leading-relaxed text-indigo-300 overflow-hidden shadow-lg">
-                        <div className="flex items-center justify-between border-b border-indigo-500/10 pb-1.5 mb-2 text-[9px] text-indigo-400/80">
-                          <span>$ node --experimental-typescript server.ts</span>
-                          <span>Line: {Math.floor(videoProgress * 1.5)}</span>
+                  ) : (
+                    <video 
+                      src={activeLecture.videoUrl} 
+                      controls 
+                      className="w-full h-full object-contain" 
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                </div>
+              ) : activeLecture?.audioUrl ? (
+                <div className="absolute inset-0 w-full h-full bg-zinc-950 flex flex-col items-center justify-center p-8 z-10 select-auto">
+                  {(!isEnrolled && !activeLecture.freePreview) ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-zinc-950/95 z-20 space-y-4">
+                      <Lock className="w-12 h-12 text-indigo-400 animate-pulse" />
+                      <p className="text-sm font-semibold tracking-wide text-zinc-100 uppercase font-mono">Subscribe to unlock this Lecture 🔒</p>
+                      <p className="text-xs text-zinc-400 max-w-md">Unlock full lifetime access to all {course.lessonsCount || 24} curriculum sections today.</p>
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 p-6 rounded-2xl space-y-4 shadow-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 text-indigo-400">
+                          <Headphones className="w-5 h-5 animate-pulse" />
                         </div>
-                        <p className="font-semibold text-emerald-400 h-10 select-all font-mono break-all leading-normal">
-                          {canvasModeText}
-                        </p>
+                        <div className="text-left">
+                          <p className="text-[10px] text-zinc-500 font-mono tracking-wider">AUDIO LECTURE</p>
+                          <p className="text-xs font-bold text-zinc-100 truncate max-w-[280px]">{activeLecture.title}</p>
+                        </div>
                       </div>
-
-                      {/* Animated graphic viz */}
-                      <div className="flex gap-1.5 h-6 items-end mt-4">
-                        {[1, 2, 3, 4, 5, 4, 3, 2, 5, 1, 3, 4, 2, 1, 5, 4, 3, 2, 4].map((h, i) => (
-                          <motion.div
-                            key={i}
-                            animate={{ height: isPlaying ? [10, h * 4, 10] : 10 }}
-                            transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.05 }}
-                            className="w-1 bg-indigo-500 rounded"
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="h-2 w-full bg-zinc-950 border border-zinc-900/50 rounded-full overflow-hidden mb-6 relative">
-                      <div 
-                        className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                        style={{ width: `${videoProgress}%` }}
+                      <audio 
+                        src={activeLecture.audioUrl} 
+                        controls 
+                        className="w-full" 
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </div>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="paused-state"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="space-y-4 relative z-10 flex flex-col items-center justify-center p-8"
-                  >
-                    <div 
-                      onClick={() => {
-                        if (isEnrolled || activeLecture?.freePreview) {
-                          setIsPlaying(true);
-                        } else {
-                          alert("Curriculum item is premium locked. Enroll to play.");
-                        }
-                      }}
-                      className="w-16 h-16 rounded-full bg-white text-zinc-950 flex items-center justify-center shadow-xl hover:scale-110 transition duration-300 cursor-pointer border border-zinc-200"
-                    >
-                      <Play className="w-7 h-7 fill-zinc-950 translate-x-0.5" />
-                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Abstract futuristic grid backing */}
+                  <div className="absolute inset-0 opacity-10 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]" />
+                  
+                  <AnimatePresence mode="wait">
+                    {isPlaying ? (
+                      <motion.div 
+                        key="playing-state"
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-4 w-full h-full flex flex-col justify-between pt-4 p-6"
+                      >
+                        <div className="flex items-center justify-center gap-1.5 text-zinc-500 text-xs font-mono bg-zinc-900/50 backdrop-blur border border-white/5 py-1 px-3.5 rounded-full select-none w-max mx-auto">
+                          <Code className="w-3.5 h-3.5 text-indigo-400" />
+                          Live Stream Simulation (ACTIVE)
+                        </div>
 
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold tracking-wide text-zinc-100 uppercase font-mono">
-                        {(!isEnrolled && !activeLecture?.freePreview) ? "Subscribe to unlock this Lecture 🔒" : "Click to Play Class Stream"}
-                      </p>
-                      <p className="text-xs text-zinc-400 max-w-md">
-                        {(!isEnrolled && !activeLecture?.freePreview) 
-                          ? `Unlock full lifetime access to all ${course.lessonsCount || 24} curriculum sections today.`
-                          : `${activeLecture?.title || "Welcome lesson overview"} • ${activeLecture?.duration}`}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        <div className="flex-1 flex items-center justify-center flex-col px-4">
+                          {/* Code Stream visualization waves */}
+                          <div className="w-full max-w-lg p-4 rounded-xl border border-indigo-500/20 bg-indigo-950/20 text-left font-mono text-[11px] leading-relaxed text-indigo-300 overflow-hidden shadow-lg">
+                            <div className="flex items-center justify-between border-b border-indigo-500/10 pb-1.5 mb-2 text-[9px] text-indigo-400/80">
+                              <span>$ node --experimental-typescript server.ts</span>
+                              <span>Line: {Math.floor(videoProgress * 1.5)}</span>
+                            </div>
+                            <p className="font-semibold text-emerald-400 h-10 select-all font-mono break-all leading-normal">
+                              {canvasModeText}
+                            </p>
+                          </div>
+
+                          {/* Animated graphic viz */}
+                          <div className="flex gap-1.5 h-6 items-end mt-4">
+                            {[1, 2, 3, 4, 5, 4, 3, 2, 5, 1, 3, 4, 2, 1, 5, 4, 3, 2, 4].map((h, i) => (
+                              <motion.div
+                                key={i}
+                                animate={{ height: isPlaying ? [10, h * 4, 10] : 10 }}
+                                transition={{ repeat: Infinity, duration: 0.8, delay: i * 0.05 }}
+                                className="w-1 bg-indigo-500 rounded"
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="h-2 w-full bg-zinc-950 border border-zinc-900/50 rounded-full overflow-hidden mb-6 relative">
+                          <div 
+                            className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                            style={{ width: `${videoProgress}%` }}
+                          />
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="paused-state"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-4 relative z-10 flex flex-col items-center justify-center p-8"
+                      >
+                        <div 
+                          onClick={() => {
+                            if (isEnrolled || activeLecture?.freePreview) {
+                              setIsPlaying(true);
+                            } else {
+                              alert("Curriculum item is premium locked. Enroll to play.");
+                            }
+                          }}
+                          className="w-16 h-16 rounded-full bg-white text-zinc-950 flex items-center justify-center shadow-xl hover:scale-110 transition duration-300 cursor-pointer border border-zinc-200"
+                        >
+                          <Play className="w-7 h-7 fill-zinc-950 translate-x-0.5" />
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold tracking-wide text-zinc-100 uppercase font-mono">
+                            {(!isEnrolled && !activeLecture?.freePreview) ? "Subscribe to unlock this Lecture 🔒" : "Click to Play Class Stream"}
+                          </p>
+                          <p className="text-xs text-zinc-400 max-w-md">
+                            {(!isEnrolled && !activeLecture?.freePreview) 
+                              ? `Unlock full lifetime access to all ${course.lessonsCount || 24} curriculum sections today.`
+                              : `${activeLecture?.title || "Welcome lesson overview"} • ${activeLecture?.duration}`}
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              )}
             </div>
 
             {/* VIDEO PLAYER METRIC CONTROLS FOOTER */}
@@ -488,7 +629,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
           {/* LOWER SECTION TABS DECK */}
           <div className="border border-app-border bg-app-aside-bg/30 rounded-2xl overflow-hidden flex flex-col">
             <div className="flex border-b border-app-border bg-app-btn-sec/20">
-              {(["curriculum", "notes", "qa", "resources"] as const).map((tab) => (
+              {(["curriculum", "notes", "qa", "resources", "feedback"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -500,7 +641,8 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                 >
                   {tab === "curriculum" ? "Curriculum" :
                    tab === "notes" ? "My Course Notes" :
-                   tab === "qa" ? "Student Q&A Only" : "Free Resources"}
+                   tab === "qa" ? "Student Q&A Only" :
+                   tab === "resources" ? "Free Resources" : "App Feedback & Rating"}
                 </button>
               ))}
             </div>
@@ -704,6 +846,237 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                     </div>
                   </motion.div>
                 )}
+
+                {activeTab === "feedback" && (
+                  <motion.div
+                    key="feedback-tab"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-6"
+                  >
+                    {/* FEEDBACK OVERVIEW STATS CARD */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl border border-app-border bg-app-btn-sec/5 items-center">
+                      <div className="text-center space-y-1 md:border-r border-app-border/40 py-2">
+                        <span className="text-3xl font-bold font-display text-app-text">
+                          {(feedbacks.length > 0
+                            ? (feedbacks.reduce((sum, f) => sum + f.rating, 0) / feedbacks.length).toFixed(1)
+                            : (course.rating || 4.7).toFixed(1))}
+                        </span>
+                        <div className="flex justify-center gap-0.5 text-amber-400">
+                          {Array.from({ length: 5 }).map((_, i) => {
+                            const avg = feedbacks.length > 0
+                              ? feedbacks.reduce((sum, f) => sum + f.rating, 0) / feedbacks.length
+                              : course.rating || 4.7;
+                            return (
+                              <Star
+                                key={i}
+                                className={`w-3.5 h-3.5 ${i < Math.round(avg) ? "fill-amber-400 text-amber-400" : "text-zinc-600"}`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <p className="text-[10px] text-app-text-muted font-mono uppercase tracking-wide">
+                          Course rating based on {feedbacks.length} feedbacks
+                        </p>
+                      </div>
+
+                      <div className="col-span-2 space-y-2 px-3">
+                        <h4 className="text-xs font-semibold text-app-text font-display flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-indigo-400" />
+                          Help Us Improve VISION79!
+                        </h4>
+                        <p className="text-[10px] text-app-text-sec leading-relaxed">
+                          Your ratings and recommendations directly steer our updates. Once your suggestions are onboarded and implemented, you will see an "Onboarded" badge with response from the instructor.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* TWO COLUMN GRID: LEFT = INPUT FORM, RIGHT = COMMUNITY FEEDBACK */}
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                      
+                      {/* FEEDBACK INPUT FORM */}
+                      <div className="lg:col-span-2 space-y-4">
+                        <div className="p-4 rounded-xl border border-app-border bg-app-aside-bg/40 space-y-3.5">
+                          <h4 className="text-xs font-bold text-app-text uppercase tracking-wide font-mono flex items-center gap-2">
+                            <MessageSquare className="w-4 h-4 text-indigo-400" />
+                            Leave your feedback
+                          </h4>
+
+                          {submitSuccess ? (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center space-y-2"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                                <CheckCircle2 className="w-4 h-4" />
+                              </div>
+                              <p className="text-xs font-bold text-emerald-400">Feedback Submitted!</p>
+                              <p className="text-[10px] text-app-text-muted leading-normal">
+                                Thank you for your review. It has been saved.
+                              </p>
+                              <button
+                                onClick={() => setSubmitSuccess(false)}
+                                className="text-[10px] text-indigo-400 font-mono hover:underline cursor-pointer pt-1 block mx-auto bg-transparent border-none outline-none"
+                              >
+                                Submit another suggestion
+                              </button>
+                            </motion.div>
+                          ) : (
+                            <form onSubmit={handleSubmitFeedback} className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">
+                                  Your Name
+                                </label>
+                                <input
+                                  type="text"
+                                  value={userNameInput}
+                                  onChange={(e) => setUserNameInput(e.target.value)}
+                                  placeholder="e.g. Alex J. (or leave anonymous)"
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">
+                                  Your Rating
+                                </label>
+                                <div className="flex gap-1.5 py-1">
+                                  {[1, 2, 3, 4, 5].map((stars) => (
+                                    <button
+                                      key={stars}
+                                      type="button"
+                                      onClick={() => setRatingInput(stars)}
+                                      className="p-1 focus:outline-none hover:scale-115 transition bg-transparent border-none"
+                                    >
+                                      <Star
+                                        className={`w-5 h-5 transition-all ${
+                                          stars <= ratingInput
+                                            ? "fill-amber-400 text-amber-400"
+                                            : "text-zinc-600 hover:text-zinc-500"
+                                        }`}
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">
+                                  Suggestions & Improvement Feedback
+                                </label>
+                                <textarea
+                                  value={commentInput}
+                                  onChange={(e) => setCommentInput(e.target.value)}
+                                  rows={3}
+                                  placeholder="Describe how we can make this app better..."
+                                  className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2.5 text-xs focus:outline-none focus:border-indigo-500 leading-relaxed resize-none"
+                                />
+                              </div>
+
+                              {submitError && (
+                                <p className="text-[10px] text-red-400 font-mono leading-normal bg-red-500/5 p-2 rounded border border-red-500/10">
+                                  ⚠️ {submitError}
+                                </p>
+                              )}
+
+                              <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full py-2 px-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition duration-200 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
+                              >
+                                {isSubmitting ? (
+                                  <>
+                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Submitting feedback...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="w-3.5 h-3.5" />
+                                    Submit Feedback & Rating
+                                  </>
+                                )}
+                              </button>
+                            </form>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* COMMUNITY FEEDBACK LIST */}
+                      <div className="lg:col-span-3 space-y-3.5 max-h-[360px] overflow-y-auto pr-1">
+                        <h4 className="text-xs font-bold text-app-text uppercase tracking-wide font-mono">
+                          What other students say
+                        </h4>
+
+                        {feedbacks.length === 0 ? (
+                          <div className="p-8 text-center border border-dashed border-app-border/60 rounded-xl text-app-text-muted space-y-1">
+                            <MessageSquare className="w-8 h-8 text-zinc-700 mx-auto" />
+                            <p className="text-xs font-medium">No feedback yet.</p>
+                            <p className="text-[10px] leading-normal font-mono text-app-text-muted">
+                              Be the first to submit a suggestion and guide future upgrades!
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {feedbacks.map((item) => (
+                              <div
+                                key={item.id}
+                                className={`p-3.5 rounded-xl border text-xs space-y-2.5 transition relative ${
+                                  item.onboarded === 1
+                                    ? "bg-emerald-500/5 border-emerald-500/20"
+                                    : "bg-app-btn-sec/5 border-app-border/60 hover:border-app-border"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="space-y-0.5">
+                                    <span className="font-bold text-app-text block">
+                                      {item.userName || "Anonymous"}
+                                    </span>
+                                    <span className="text-[9px] text-app-text-muted font-mono">
+                                      {new Date(item.createdAt).toLocaleDateString("en-US", {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric"
+                                      })}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex gap-0.5 text-amber-400">
+                                    {Array.from({ length: 5 }).map((_, idx) => (
+                                      <Star
+                                        key={idx}
+                                        className={`w-3 h-3 ${idx < item.rating ? "fill-amber-400 text-amber-400" : "text-zinc-700"}`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <p className="text-app-text-sec leading-relaxed text-[11px]">
+                                  {item.comment}
+                                </p>
+
+                                {/* ONBOARDED BADGE & INSTRUCTOR'S UPDATE MESSAGE */}
+                                {item.onboarded === 1 && (
+                                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 space-y-1 mt-1">
+                                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 font-mono uppercase tracking-wide">
+                                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                                      Onboarded & Implemented in V79! ✅
+                                    </div>
+                                    <p className="text-[10px] text-app-text-sec leading-relaxed pl-5 italic font-mono">
+                                      "{item.onboardedComment}"
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
           </div>
@@ -730,12 +1103,29 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                   </span>
                   <div className="flex items-baseline justify-center sm:justify-start gap-2 pt-2">
                     <span className="text-3xl font-extrabold text-app-text font-display">${displayPrice.toFixed(2)}</span>
-                    <span className="text-xs text-app-text-muted line-through font-mono">$199.99</span>
-                    <span className="text-xs text-emerald-500 font-bold">52% OFF</span>
+                    {hasPromo ? (
+                      <>
+                        <span className="text-xs text-app-text-muted line-through font-mono">${originalPrice.toFixed(2)}</span>
+                        <span className="text-xs text-emerald-500 font-bold animate-pulse">50% OFF (Launch Promo)</span>
+                      </>
+                    ) : (
+                      originalPrice > 0 && (
+                        <>
+                          <span className="text-xs text-app-text-muted line-through font-mono">${(originalPrice * 2.1).toFixed(2)}</span>
+                          <span className="text-xs text-emerald-500 font-bold">52% OFF</span>
+                        </>
+                      )
+                    )}
                   </div>
-                  <p className="text-[10px] text-amber-500 font-mono tracking-normal block pt-1 font-bold">
-                    ⚠️ 5 hours left at this certified rate!
-                  </p>
+                  {hasPromo ? (
+                    <p className="text-[10px] text-emerald-400 font-mono tracking-normal block pt-1 font-bold animate-pulse">
+                      🎉 Active Promo: 50% discount automatically applied (First 30 days from launch)!
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-amber-500 font-mono tracking-normal block pt-1 font-bold">
+                      ⚠️ 5 hours left at this certified rate!
+                    </p>
+                  )}
                 </div>
 
                 {/* SECURE STRIPE CHECKOUT FORM GATEWAY */}

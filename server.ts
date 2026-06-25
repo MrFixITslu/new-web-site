@@ -3,9 +3,36 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import multer from "multer";
 
 // Configure environment variable definitions
 dotenv.config();
+
+const DEFAULT_CURRICULUM_JSON = JSON.stringify([
+  {
+    title: "Block 1: Production Core Architecture Swaps & Setup",
+    lectures: [
+      { id: "1-1", title: "1. Core Framework Setup and Configuration Files", duration: "12:15", videoSimType: "intro", freePreview: true },
+      { id: "1-2", title: "2. Structuring TypeScript Enums and Types Safely", duration: "18:40", videoSimType: "setup" },
+      { id: "1-3", title: "3. Hot-Swapping Sandbox Server Port Inbound Channels", duration: "22:05", videoSimType: "setup" }
+    ]
+  },
+  {
+    title: "Block 2: High Concurrency State Engines & DB Mappings",
+    lectures: [
+      { id: "2-1", title: "4. SQLite schemas modeling & Dynamic Alter Migrations", duration: "32:10", videoSimType: "deepdive" },
+      { id: "2-2", title: "5. Lazy-initializing SDK clients and handling failures", duration: "25:30", videoSimType: "deepdive" },
+      { id: "2-3", title: "6. Handling CORS & OAuth flows inside Sandboxed iFrames", duration: "29:15", videoSimType: "deepdive" }
+    ]
+  },
+  {
+    title: "Block 3: Production Builds & Ingress Traffic Optimization",
+    lectures: [
+      { id: "3-1", title: "7. Compiling TypeScript output bundles via fast esbuild", duration: "44:00", videoSimType: "advanced" },
+      { id: "3-2", title: "8. Deploying standalone Cloud Container ports safely", duration: "38:50", videoSimType: "advanced" }
+    ]
+  }
+]);
 
 const SEED_APPS: any[] = [
   {
@@ -18,10 +45,11 @@ const SEED_APPS: any[] = [
     accessUrl: "/course/1",
     launchCount: 42,
     price: 94.99,
-    instructor: "Dr. Angela Yu",
+    instructor: "Vision79 Lead Architect",
     rating: 4.9,
     duration: "24.5 total hours",
-    lessonsCount: 142
+    lessonsCount: 142,
+    curriculum: DEFAULT_CURRICULUM_JSON
   },
   {
     name: "Next.js 15 Intensive Bootcamp",
@@ -33,10 +61,11 @@ const SEED_APPS: any[] = [
     accessUrl: "/course/2",
     launchCount: 28,
     price: 84.99,
-    instructor: "Kent C. Dodds",
+    instructor: "Vision79 Lead Instructor",
     rating: 4.8,
     duration: "18 total hours",
-    lessonsCount: 96
+    lessonsCount: 96,
+    curriculum: DEFAULT_CURRICULUM_JSON
   },
   {
     name: "Rust Systems Design Blueprint",
@@ -48,10 +77,11 @@ const SEED_APPS: any[] = [
     accessUrl: "/course/3",
     launchCount: 15,
     price: 119.99,
-    instructor: "Arjan Codes",
+    instructor: "Vision79 Systems Trainer",
     rating: 4.7,
     duration: "32 total hours",
-    lessonsCount: 180
+    lessonsCount: 180,
+    curriculum: DEFAULT_CURRICULUM_JSON
   },
   {
     name: "React for Beginners & Designers",
@@ -63,10 +93,11 @@ const SEED_APPS: any[] = [
     accessUrl: "/course/4",
     launchCount: 96,
     price: 0,
-    instructor: "Sarah Drasner",
+    instructor: "Sarah Drasner (V79 Guest)",
     rating: 4.6,
     duration: "4.5 total hours",
-    lessonsCount: 25
+    lessonsCount: 25,
+    curriculum: DEFAULT_CURRICULUM_JSON
   },
   {
     name: "DevOps Orchestration Engine",
@@ -125,10 +156,12 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const JSON_DB_FILE = path.join(DATA_DIR, "vision79_saas.json");
 const JSON_ADS_FILE = path.join(DATA_DIR, "vision79_ads.json");
+const JSON_FEEDBACK_FILE = path.join(DATA_DIR, "vision79_feedback.json");
 
 // For backwards compatibility and seamless Docker setup, copy files from the root if present
 const ROOT_DB_FILE = path.join(process.cwd(), "vision79_saas.json");
 const ROOT_ADS_FILE = path.join(process.cwd(), "vision79_ads.json");
+const ROOT_FEEDBACK_FILE = path.join(process.cwd(), "vision79_feedback.json");
 
 if (!fs.existsSync(JSON_DB_FILE) && fs.existsSync(ROOT_DB_FILE)) {
   try {
@@ -147,6 +180,40 @@ if (!fs.existsSync(JSON_ADS_FILE) && fs.existsSync(ROOT_ADS_FILE)) {
     console.error("[Migration] Failed to copy root vision79_ads.json:", e);
   }
 }
+
+if (!fs.existsSync(JSON_FEEDBACK_FILE) && fs.existsSync(ROOT_FEEDBACK_FILE)) {
+  try {
+    fs.copyFileSync(ROOT_FEEDBACK_FILE, JSON_FEEDBACK_FILE);
+    console.log("[Migration] Copied root vision79_feedback.json to data/ directory.");
+  } catch (e) {
+    console.error("[Migration] Failed to copy root vision79_feedback.json:", e);
+  }
+}
+
+const SEED_FEEDBACK: any[] = [
+  {
+    id: 1,
+    appId: 1,
+    appName: "Full-Stack TypeScript Masterclass",
+    rating: 5,
+    comment: "This course is phenomenal! The section on Next.js Server Actions was extremely helpful and hands-on. Can we get more React 19 content added?",
+    userName: "Alex Johnson",
+    onboarded: 1,
+    onboardedComment: "Thanks Alex! We have added 3 new lessons specifically covering React 19 UseActionState and UseFormStatus hooks.",
+    createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 2,
+    appId: 2,
+    appName: "Next.js 15 Intensive Bootcamp",
+    rating: 4,
+    comment: "Great material! One request: could you add a cheat sheet for the caching strategies in Next.js 15?",
+    userName: "Maria S.",
+    onboarded: 0,
+    onboardedComment: "",
+    createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
+  }
+];
 
 class JsonDatabase {
   async init() {
@@ -307,6 +374,71 @@ class JsonDatabase {
     this.writeAds(filtered);
     return filtered.length < initialLen;
   }
+
+  readFeedback(): any[] {
+    try {
+      if (!fs.existsSync(JSON_FEEDBACK_FILE)) {
+        this.writeFeedback(SEED_FEEDBACK);
+        return SEED_FEEDBACK;
+      }
+      const content = fs.readFileSync(JSON_FEEDBACK_FILE, "utf-8");
+      if (!content.trim()) {
+        this.writeFeedback(SEED_FEEDBACK);
+        return SEED_FEEDBACK;
+      }
+      return JSON.parse(content);
+    } catch (e) {
+      console.error("[JSON Database] Feedback Read error:", e);
+      return SEED_FEEDBACK;
+    }
+  }
+
+  writeFeedback(data: any[]) {
+    try {
+      fs.writeFileSync(JSON_FEEDBACK_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch (e) {
+      console.error("[JSON Database] Feedback Write error:", e);
+    }
+  }
+
+  async getFeedback(appId?: number): Promise<any[]> {
+    let list = this.readFeedback();
+    if (appId !== undefined) {
+      list = list.filter(f => f.appId === Number(appId));
+    }
+    return list;
+  }
+
+  async addFeedback(feedback: any): Promise<any> {
+    const list = this.readFeedback();
+    const nextId = list.reduce((max, f) => Math.max(max, f.id || 0), 0) + 1;
+    const newFeedback = {
+      id: nextId,
+      appId: Number(feedback.appId),
+      appName: feedback.appName || "Unknown SaaS",
+      rating: Number(feedback.rating),
+      comment: feedback.comment || "",
+      userName: feedback.userName || "Anonymous",
+      onboarded: 0,
+      onboardedComment: "",
+      createdAt: new Date().toISOString()
+    };
+    list.push(newFeedback);
+    this.writeFeedback(list);
+    return newFeedback;
+  }
+
+  async onboardFeedback(id: number, comment: string): Promise<any> {
+    const list = this.readFeedback();
+    const index = list.findIndex(f => f.id === Number(id));
+    if (index === -1) {
+      throw new Error(`Feedback with ID ${id} not found`);
+    }
+    list[index].onboarded = 1;
+    list[index].onboardedComment = comment || "";
+    this.writeFeedback(list);
+    return list[index];
+  }
 }
 
 class SqliteDatabase {
@@ -344,6 +476,7 @@ class SqliteDatabase {
             this.db.run("ALTER TABLE saas_apps ADD COLUMN rating REAL DEFAULT 4.7", () => {});
             this.db.run("ALTER TABLE saas_apps ADD COLUMN duration TEXT", () => {});
             this.db.run("ALTER TABLE saas_apps ADD COLUMN lessonsCount INTEGER DEFAULT 10", () => {});
+            this.db.run("ALTER TABLE saas_apps ADD COLUMN curriculum TEXT", () => {});
 
             this.db.get("SELECT COUNT(*) as count FROM saas_apps", (countErr: any, row: any) => {
               if (countErr) return reject(countErr);
@@ -351,8 +484,8 @@ class SqliteDatabase {
               if (row && row.count === 0) {
                 console.log("[SQLite DB] Database empty. Seeding SQLite...");
                 const stmt = this.db.prepare(
-                  `INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount, price, instructor, rating, duration, lessonsCount)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                  `INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount, price, instructor, rating, duration, lessonsCount, curriculum)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
                 );
 
                 for (const app of SEED_APPS) {
@@ -369,7 +502,8 @@ class SqliteDatabase {
                     app.instructor || "",
                     app.rating || 4.7,
                     app.duration || "",
-                    app.lessonsCount || 0
+                    app.lessonsCount || 0,
+                    app.curriculum || ""
                   ]);
                 }
 
@@ -394,6 +528,60 @@ class SqliteDatabase {
               return reject(err);
             }
 
+            const initFeedbackTable = () => {
+              this.db.run(
+                `CREATE TABLE IF NOT EXISTS saas_feedback (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  appId INTEGER NOT NULL,
+                  appName TEXT NOT NULL,
+                  rating INTEGER NOT NULL,
+                  comment TEXT NOT NULL,
+                  userName TEXT NOT NULL,
+                  onboarded INTEGER NOT NULL DEFAULT 0,
+                  onboardedComment TEXT NOT NULL DEFAULT '',
+                  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                )`,
+                (fErr: any) => {
+                  if (fErr) {
+                    console.error("[SQLite DB] Feedback Table Creation failed:", fErr);
+                    return reject(fErr);
+                  }
+
+                  this.db.get("SELECT COUNT(*) as count FROM saas_feedback", (fCountErr: any, fRow: any) => {
+                    if (fCountErr) return reject(fCountErr);
+
+                    if (fRow && fRow.count === 0) {
+                      console.log("[SQLite DB] Feedback empty. Seeding SQLite Feedback...");
+                      const fStmt = this.db.prepare(
+                        `INSERT INTO saas_feedback (appId, appName, rating, comment, userName, onboarded, onboardedComment, createdAt)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                      );
+
+                      for (const f of SEED_FEEDBACK) {
+                        fStmt.run([
+                          f.appId,
+                          f.appName,
+                          f.rating,
+                          f.comment,
+                          f.userName || "Anonymous",
+                          f.onboarded,
+                          f.onboardedComment || "",
+                          f.createdAt
+                        ]);
+                      }
+
+                      fStmt.finalize((ffErr: any) => {
+                        if (ffErr) return reject(ffErr);
+                        resolve();
+                      });
+                    } else {
+                      resolve();
+                    }
+                  });
+                }
+              );
+            };
+
             this.db.get("SELECT COUNT(*) as count FROM saas_ads", (countErr: any, row: any) => {
               if (countErr) return reject(countErr);
 
@@ -415,10 +603,10 @@ class SqliteDatabase {
 
                 stmt.finalize((fErr: any) => {
                   if (fErr) return reject(fErr);
-                  resolve();
+                  initFeedbackTable();
                 });
               } else {
-                resolve();
+                initFeedbackTable();
               }
             });
           }
@@ -439,8 +627,8 @@ class SqliteDatabase {
   async addApp(app: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const q = `
-        INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount, price, instructor, rating, duration, lessonsCount)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+        INSERT INTO saas_apps (name, subtitle, description, category, pricingType, logoUrl, accessUrl, launchCount, price, instructor, rating, duration, lessonsCount, curriculum)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
       `;
       const self = this;
       this.db.run(q, [
@@ -455,7 +643,8 @@ class SqliteDatabase {
         app.instructor || "",
         app.rating || 4.7,
         app.duration || "",
-        app.lessonsCount || 0
+        app.lessonsCount || 0,
+        app.curriculum || ""
       ], (err: any) => {
         if (err) return reject(err);
         
@@ -519,7 +708,7 @@ class SqliteDatabase {
     return new Promise((resolve, reject) => {
       const q = `
         UPDATE saas_apps 
-        SET name = ?, subtitle = ?, description = ?, category = ?, pricingType = ?, logoUrl = ?, accessUrl = ?, price = ?, instructor = ?, rating = ?, duration = ?, lessonsCount = ?
+        SET name = ?, subtitle = ?, description = ?, category = ?, pricingType = ?, logoUrl = ?, accessUrl = ?, price = ?, instructor = ?, rating = ?, duration = ?, lessonsCount = ?, curriculum = ?
         WHERE id = ?
       `;
       const self = this;
@@ -536,6 +725,7 @@ class SqliteDatabase {
         app.rating !== undefined ? Number(app.rating) : 4.7,
         app.duration || "",
         app.lessonsCount !== undefined ? Number(app.lessonsCount) : 0,
+        app.curriculum || "",
         Number(id)
       ], (err: any) => {
         if (err) {
@@ -607,6 +797,70 @@ class SqliteDatabase {
       });
     });
   }
+
+  async getFeedback(appId?: number): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      let query = "SELECT * FROM saas_feedback";
+      const params: any[] = [];
+      if (appId !== undefined) {
+        query += " WHERE appId = ?";
+        params.push(Number(appId));
+      }
+      query += " ORDER BY id DESC";
+      this.db.all(query, params, (err: any, rows: any) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+  }
+
+  async addFeedback(feedback: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const q = `
+        INSERT INTO saas_feedback (appId, appName, rating, comment, userName, onboarded, onboardedComment, createdAt)
+        VALUES (?, ?, ?, ?, ?, 0, '', CURRENT_TIMESTAMP)
+      `;
+      const self = this;
+      this.db.run(q, [
+        Number(feedback.appId),
+        feedback.appName || "Unknown SaaS",
+        Number(feedback.rating),
+        feedback.comment || "",
+        feedback.userName || "Anonymous"
+      ], function(this: any, err: any) {
+        if (err) return reject(err);
+        
+        self.db.get("SELECT last_insert_rowid() AS lastId", (rowIdErr: any, rowIdRes: any) => {
+          if (rowIdErr) return reject(rowIdErr);
+          const newId = rowIdRes ? rowIdRes.lastId : 0;
+          
+          self.db.get("SELECT * FROM saas_feedback WHERE id = ?", [newId], (gErr: any, row: any) => {
+            if (gErr) return reject(gErr);
+            resolve(row);
+          });
+        });
+      });
+    });
+  }
+
+  async onboardFeedback(id: number, comment: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const q = `
+        UPDATE saas_feedback 
+        SET onboarded = 1, onboardedComment = ? 
+        WHERE id = ?
+      `;
+      const self = this;
+      this.db.run(q, [comment || "", Number(id)], function(this: any, err: any) {
+        if (err) return reject(err);
+        
+        self.db.get("SELECT * FROM saas_feedback WHERE id = ?", [Number(id)], (fetchErr: any, row: any) => {
+          if (fetchErr) return reject(fetchErr);
+          resolve(row);
+        });
+      });
+    });
+  }
 }
 
 let db: any;
@@ -656,6 +910,33 @@ async function startServer() {
 
   // Middleware
   app.use(express.json());
+
+  // Static serving for uploaded course materials (audio, video, documents)
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use("/uploads", express.static(uploadsDir));
+
+  // Multer Storage Engine for Audio and Video uploads
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const ext = path.extname(file.originalname);
+      const cleanName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      cb(null, `${path.basename(cleanName, ext)}-${uniqueSuffix}${ext}`);
+    }
+  });
+
+  const upload = multer({
+    storage,
+    limits: {
+      fileSize: 150 * 1024 * 1024 // Allow up to 150 MB media file size simulation
+    }
+  });
 
   // Canonical admin intercept routes registered first to prioritize admin page loading
   const adminPaths = [
@@ -779,6 +1060,30 @@ async function startServer() {
     }
   });
 
+  // POST file upload endpoint (audio, video, documents)
+  app.post("/api/upload", upload.single("file"), (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== "Bearer vision79-session-token-v1") {
+      if (req.file) {
+        try { fs.unlinkSync(req.file.path); } catch (e) {}
+      }
+      return res.status(401).json({ error: "Unauthorized access: Administrator session is required." });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file was uploaded." });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    res.json({
+      url: fileUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+  });
+
   // POST create a new SaaS application record
   app.post("/api/apps", async (req, res) => {
     const authHeader = req.headers.authorization;
@@ -786,7 +1091,7 @@ async function startServer() {
       return res.status(401).json({ error: "Unauthorized access: Administrator session is required." });
     }
 
-    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl, price, instructor, rating, duration, lessonsCount } = req.body;
+    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl, price, instructor, rating, duration, lessonsCount, curriculum } = req.body;
 
     // validation
     if (!name || !subtitle || !description || !category || !pricingType || !logoUrl || !accessUrl) {
@@ -814,8 +1119,28 @@ async function startServer() {
         instructor: instructor || "",
         rating: rating !== undefined ? Number(rating) : 4.7,
         duration: duration || "",
-        lessonsCount: lessonsCount !== undefined ? Number(lessonsCount) : 10
+        lessonsCount: lessonsCount !== undefined ? Number(lessonsCount) : 10,
+        curriculum: curriculum || ""
       });
+
+      // Automatically generate a promotional campaign for 50% for the next 30 days when a new course is created
+      if (category === "courses") {
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + 30);
+        const dateString = expirationDate.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric"
+        });
+
+        await db.addAd({
+          title: `Launch Event: 50% Off ${name}`,
+          subtitle: `Get premium lifetime access to ${name} by ${instructor || "our expert panel"} for 50% off! Valid until ${dateString}.`,
+          imageUrl: logoUrl || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop",
+          linkUrl: `course:${newApp.id}`
+        });
+      }
+
       res.status(201).json(newApp);
     } catch (err) {
       console.error("[API] Error adding app:", err);
@@ -831,7 +1156,7 @@ async function startServer() {
     }
 
     const id = Number(req.params.id);
-    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl, price, instructor, rating, duration, lessonsCount } = req.body;
+    const { name, subtitle, description, category, pricingType, logoUrl, accessUrl, price, instructor, rating, duration, lessonsCount, curriculum } = req.body;
 
     // validation
     if (!name || !subtitle || !description || !category || !pricingType || !logoUrl || !accessUrl) {
@@ -859,7 +1184,8 @@ async function startServer() {
         instructor: instructor || "",
         rating: rating !== undefined ? Number(rating) : 4.7,
         duration: duration || "",
-        lessonsCount: lessonsCount !== undefined ? Number(lessonsCount) : 10
+        lessonsCount: lessonsCount !== undefined ? Number(lessonsCount) : 10,
+        curriculum: curriculum || ""
       });
       res.json(updatedApp);
     } catch (err) {
@@ -958,6 +1284,76 @@ async function startServer() {
     } catch (err) {
       console.error("[API] Error deleting ad:", err);
       res.status(500).json({ error: "Database error during deletion" });
+    }
+  });
+
+  // GET all feedback, optionally filtered by appId
+  app.get("/api/feedback", async (req, res) => {
+    try {
+      const appIdQuery = req.query.appId ? Number(req.query.appId) : undefined;
+      const list = await db.getFeedback(appIdQuery);
+      res.json(list);
+    } catch (err) {
+      console.error("[API] Error fetching feedback:", err);
+      res.status(500).json({ error: "Db exception fetching feedback" });
+    }
+  });
+
+  // POST submit new feedback (rating, comment) for an app
+  app.post("/api/feedback", async (req, res) => {
+    const { appId, appName, rating, comment, userName } = req.body;
+
+    if (!appId || !rating || !comment) {
+      return res.status(400).json({ error: "Missing required fields (appId, rating, comment) in body" });
+    }
+
+    try {
+      const newFeedback = await db.addFeedback({
+        appId,
+        appName,
+        rating,
+        comment,
+        userName
+      });
+      res.status(201).json(newFeedback);
+    } catch (err) {
+      console.error("[API] Error submitting feedback:", err);
+      res.status(500).json({ error: "Failed to persist new feedback" });
+    }
+  });
+
+  // GET all feedback for administrator panel view
+  app.get("/api/admin/feedback", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== "Bearer vision79-session-token-v1") {
+      return res.status(401).json({ error: "Unauthorized access: Administrator session is required." });
+    }
+
+    try {
+      const list = await db.getFeedback();
+      res.json(list);
+    } catch (err) {
+      console.error("[API] Error fetching all feedback for admin:", err);
+      res.status(500).json({ error: "Failed to load administrator feedback" });
+    }
+  });
+
+  // POST mark a feedback as onboarded / addressed with admin response
+  app.post("/api/admin/feedback/:id/onboard", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== "Bearer vision79-session-token-v1") {
+      return res.status(401).json({ error: "Unauthorized access: Administrator session is required." });
+    }
+
+    const id = Number(req.params.id);
+    const { onboardedComment } = req.body;
+
+    try {
+      const updatedFeedback = await db.onboardFeedback(id, onboardedComment);
+      res.json(updatedFeedback);
+    } catch (err) {
+      console.error("[API] Error onboarding feedback:", err);
+      res.status(500).json({ error: "Failed to onboard feedback" });
     }
   });
 
