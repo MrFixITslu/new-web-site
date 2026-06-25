@@ -24,7 +24,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Expose default port (internally)
-ENV PORT=3000
+ENV PORT=3030
 
 # Install only production dependencies
 COPY package*.json ./
@@ -38,7 +38,7 @@ COPY --from=builder /app/vision79_saas.json ./
 COPY --from=builder /app/vision79_ads.json ./
 
 # Expose the internal port
-EXPOSE 3000
+EXPOSE 3030
 
 # Start the Node server
 CMD ["npm", "run", "start"]

@@ -118,8 +118,35 @@ const SEED_ADS: any[] = [
   }
 ];
 
-const JSON_DB_FILE = path.join(process.cwd(), "vision79_saas.json");
-const JSON_ADS_FILE = path.join(process.cwd(), "vision79_ads.json");
+const DATA_DIR = path.join(process.cwd(), "data");
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const JSON_DB_FILE = path.join(DATA_DIR, "vision79_saas.json");
+const JSON_ADS_FILE = path.join(DATA_DIR, "vision79_ads.json");
+
+// For backwards compatibility and seamless Docker setup, copy files from the root if present
+const ROOT_DB_FILE = path.join(process.cwd(), "vision79_saas.json");
+const ROOT_ADS_FILE = path.join(process.cwd(), "vision79_ads.json");
+
+if (!fs.existsSync(JSON_DB_FILE) && fs.existsSync(ROOT_DB_FILE)) {
+  try {
+    fs.copyFileSync(ROOT_DB_FILE, JSON_DB_FILE);
+    console.log("[Migration] Copied root vision79_saas.json to data/ directory.");
+  } catch (e) {
+    console.error("[Migration] Failed to copy root vision79_saas.json:", e);
+  }
+}
+
+if (!fs.existsSync(JSON_ADS_FILE) && fs.existsSync(ROOT_ADS_FILE)) {
+  try {
+    fs.copyFileSync(ROOT_ADS_FILE, JSON_ADS_FILE);
+    console.log("[Migration] Copied root vision79_ads.json to data/ directory.");
+  } catch (e) {
+    console.error("[Migration] Failed to copy root vision79_ads.json:", e);
+  }
+}
 
 class JsonDatabase {
   async init() {
@@ -287,7 +314,7 @@ class SqliteDatabase {
 
   async init() {
     const sqlite3 = sqliteModule.verbose();
-    const DB_FILE = path.join(process.cwd(), "vision79_saas.db");
+    const DB_FILE = path.join(process.cwd(), "data", "vision79_saas.db");
     this.db = new sqlite3.Database(DB_FILE);
 
     return new Promise<void>((resolve, reject) => {
