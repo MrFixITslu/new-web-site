@@ -49,7 +49,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
   // Expanded SLA sections state
   const [showSlaMatrix, setShowSlaMatrix] = useState<boolean>(true);
 
-  // Constants based on fire lion MSP service catalogs
+  // Constants based on VISION79 MSP service catalogs
   const tierPricing = {
     essential: { xcd: 120, usd: 120 / 2.70 },
     professional: { xcd: 220, usd: 220 / 2.70 },
@@ -150,46 +150,40 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
         <div className="max-w-4xl relative z-10 space-y-4">
           <div className="flex items-center gap-2">
             <span className="text-[9px] bg-indigo-500 text-white font-extrabold uppercase px-2.5 py-0.5 rounded tracking-wide">
-              Official Fire Lion Catalogs
+              Official <strong>VISION79</strong> Catalogs
             </span>
             <span className="text-zinc-400 text-xs font-mono select-none">|</span>
             <span className="text-[10px] text-zinc-300 font-mono">Saint Lucia Registry Registration Compliance</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white font-display">
-            ICT Managed Services & Pricing List
+            ICT Managed Services & Solutions
           </h1>
           
           <p className="text-sm sm:text-base text-zinc-300 font-light max-w-3xl leading-relaxed">
-            Engineered specifically to support SMEs in the Caribbean. Transparent pricing models in Eastern Caribbean Dollars (XCD) with exact fixed-peg USD conversion. Every tier guarantees professional SLA management, regional data sovereignty compliance, and secure digital defense.
+            Engineered specifically to support SMEs in Saint Lucia and the wider Caribbean. Every service tier guarantees professional SLA management, regional data sovereignty compliance, robust cloud backup integration, and proactive technical assistance tailored directly to your team's operational needs.
           </p>
 
-          {/* MASTER TOGGLES */}
-          <div className="pt-4 flex flex-wrap items-center gap-4">
-            {/* Currency convert switcher */}
-            <div className="flex items-center p-0.5 rounded-xl border border-zinc-800 bg-zinc-900/90 shadow-md">
-              <button
-                onClick={() => setCurrency("XCD")}
-                className={`px-4 py-2 text-xs font-mono rounded-lg transition-all cursor-pointer ${currency === "XCD" ? "bg-indigo-600 text-white font-bold" : "text-zinc-400"}`}
-              >
-                XCD (Eastern Caribbean peg)
-              </button>
-              <button
-                onClick={() => setCurrency("USD")}
-                className={`px-4 py-2 text-xs font-mono rounded-lg transition-all cursor-pointer ${currency === "USD" ? "bg-indigo-600 text-white font-bold" : "text-zinc-400"}`}
-              >
-                USD Equivalent (2.70:1)
-              </button>
+          {/* CALL TO ACTION DIRECTIVES */}
+          <div className="pt-4 flex flex-wrap items-center gap-4 relative z-10">
+            <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 text-xs px-3 py-1.5 rounded-lg font-mono">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Custom Quotes & Consultation Active
             </div>
-
-            {/* VAT control */}
-            <button
-              onClick={() => setIncludeVat(!includeVat)}
-              className={`px-4 py-2 text-xs rounded-xl border font-mono transition duration-200 cursor-pointer flex items-center gap-2 ${includeVat ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 font-bold" : "border-zinc-800 bg-zinc-900 text-zinc-400"}`}
+            
+            <a 
+              href="tel:+17587260035"
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer shadow-md flex items-center gap-2 border border-indigo-500"
             >
-              <span className={`w-2 h-2 rounded-full ${includeVat ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"}`}></span>
-              Saint Lucia VAT (12.5%) : {includeVat ? "Included" : "Excluded"}
-            </button>
+              📞 Call <strong>VISION79</strong>: 1 758 726 0035
+            </a>
+
+            <a 
+              href="mailto:vision79slu@gmail.com"
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white transition-all cursor-pointer shadow-md flex items-center gap-2 border border-zinc-700"
+            >
+              ✉️ Email: vision79slu@gmail.com
+            </a>
           </div>
         </div>
       </div>
@@ -237,16 +231,18 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
                       {tier.description}
                     </p>
 
-                    <div className="space-y-1 py-4 border-y border-app-border/40 font-mono">
-                      <div className="text-3xl font-extrabold text-app-text">
-                        {getDisplayPrice(tier.xcdPricePerUser)}
-                        <span className="text-xs font-normal text-app-text-muted">/user/mo</span>
+                    <div className="space-y-2 py-4 border-y border-app-border/40 font-sans">
+                      <div className="text-sm font-semibold text-indigo-400 bg-indigo-500/10 border border-indigo-500/25 px-2.5 py-1 rounded w-max">
+                        Custom Quoted Contract
                       </div>
-                      <div className="flex items-center justify-between text-[10px] pt-1 text-app-text-muted">
+                      <p className="text-[11px] text-app-text-sec leading-relaxed">
+                        Pricing customized based on seat-count and SLA needs. Contact <strong>VISION79</strong> for a tailored quote.
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] pt-1 text-app-text-muted font-mono">
                         <span>Contract terms:</span>
                         <span className="font-semibold text-app-text">{tier.minTerm}</span>
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-app-text-muted">
+                      <div className="flex items-center justify-between text-[10px] text-app-text-muted font-mono">
                         <span>P1 SLA response:</span>
                         <span className="font-semibold text-indigo-400">{tier.slaResponse}</span>
                       </div>
@@ -300,48 +296,105 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
                 {/* Out of scope item 1 */}
                 <div className="flex justify-between items-center py-2.5">
                   <div className="space-y-0.5 pr-4">
-                    <p className="font-bold text-app-text">Standard Break-Fix Hourly Rate</p>
+                    <p className="font-bold text-app-text">Standard Break-Fix Hourly Support</p>
                     <p className="text-[10px] text-app-text-muted font-normal leading-relaxed">General troubleshooting within normal business hours (8am–5pm AST weekdays).</p>
                   </div>
-                  <span className="font-mono font-bold text-app-text shrink-0">{getDisplayPrice(150)}/hr</span>
+                  <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded shrink-0">Quote on Request</span>
                 </div>
 
                 {/* Out of scope item 2 */}
                 <div className="flex justify-between items-center py-2.5">
                   <div className="space-y-0.5 pr-4">
-                    <p className="font-bold text-app-text">Emergency Weekend & Holiday Rate</p>
+                    <p className="font-bold text-app-text">Emergency Weekend & Holiday SLA Dispatch</p>
                     <p className="text-[10px] text-app-text-muted font-normal leading-relaxed">Urgent out-of-hours technician onsite/remote response requirements.</p>
                   </div>
-                  <span className="font-mono font-bold text-amber-500 shrink-0">{getDisplayPrice(250)}/hr</span>
+                  <span className="text-[10px] font-mono font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 rounded shrink-0">Call <strong>VISION79</strong> Directly</span>
                 </div>
 
                 {/* Out of scope item 3 */}
                 <div className="flex justify-between items-center py-2.5">
                   <div className="space-y-0.5 pr-4">
-                    <p className="font-bold text-app-text">Add-on Services: Storage / GB Backup</p>
+                    <p className="font-bold text-app-text">Add-on Services: Storage / GB Cloud Backup</p>
                     <p className="text-[10px] text-app-text-muted font-normal leading-relaxed">Daily robust managed cloud backups storage blocks.</p>
                   </div>
-                  <span className="font-mono font-bold text-app-text shrink-0">{getDisplayPrice(95)}/mo per 100GB</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded shrink-0">Custom Sizing Quote</span>
                 </div>
 
                 {/* Out of scope item 4 */}
                 <div className="flex justify-between items-center py-2.5">
                   <div className="space-y-0.5 pr-4">
-                    <p className="font-bold text-app-text">Saint Lucia TIN/NIC Jurisdictional GDPR Audit</p>
+                    <p className="font-bold text-app-text">Saint Lucia TIN/NIC Jurisdictional GDPR Compliance Audit</p>
                     <p className="text-[10px] text-app-text-muted font-normal leading-relaxed">Comprehensive review aligning SME operations with local data compliance regimes.</p>
                   </div>
-                  <span className="font-mono font-bold text-indigo-400 shrink-0">Flat {getDisplayPrice(1800)}</span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded shrink-0">Proposal Custom-Drafted</span>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-app-border/40 pt-5 space-y-1 bg-zinc-950/20 p-4 rounded-xl border border-app-border/50">
-              <span className="text-[9px] font-mono uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded w-max select-none block font-semibold tracking-wider">
-                Note on invoicing currency
+            {/* Note and currency guidance */}
+            <div className="border-t border-app-border/40 pt-5 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center bg-zinc-950/20 p-5 rounded-xl border border-app-border/50">
+              <div className="space-y-1 max-w-xl">
+                <span className="text-[9px] font-mono uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded w-max select-none block font-semibold tracking-wider">
+                  Invoicing & Custom Engagements
+                </span>
+                <p className="text-[10px] text-app-text-sec leading-snug">
+                  Saint Lucian clients are standard billed in Eastern Caribbean Dollars (XCD). Regional partners can mandate USD. Invoices default to a 14-day payment grace term.
+                </p>
+              </div>
+              <div className="shrink-0 flex gap-2">
+                <a href="tel:+17587260035" className="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold px-4 py-2 rounded-lg cursor-pointer transition">
+                  Call <strong>VISION79</strong>
+                </a>
+                <a href="mailto:vision79slu@gmail.com" className="bg-zinc-800 hover:bg-zinc-700 text-white text-[11px] font-bold px-4 py-2 rounded-lg cursor-pointer transition border border-zinc-700">
+                  Email
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* LARGE DIRECT CALL-TO-ACTION CARD FOR MARKETING ICT SERVICES */}
+          <div className="bg-gradient-to-br from-indigo-950/50 via-slate-900/60 to-zinc-950 border-2 border-indigo-500/30 p-6 sm:p-10 rounded-2xl space-y-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <Coins className="w-48 h-48 text-indigo-400" />
+            </div>
+            <div className="max-w-3xl relative z-10 space-y-4">
+              <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest font-extrabold bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                Direct Consultations Open
               </span>
-              <p className="text-[10px] text-app-text-sec leading-snug">
-                Saint Lucian clients are standard billed in Eastern Caribbean Dollars (XCD). Regional partners can mandate USD. Invoices default to a 14-day payment grace term.
+              <h2 className="text-xl sm:text-2xl font-bold font-display text-white tracking-tight">
+                Secure, Resilient & Customized ICT Engineering for Your Business
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-300 font-light leading-relaxed">
+                At <strong>VISION79</strong>, we understand that off-the-shelf pricing models do not capture the actual operational realities of Saint Lucian and Caribbean SMEs. <strong>VISION79</strong> provides personalized, high-performance ICT setups, secure cloud backup nodes, and enterprise-grade SLA defense.
               </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <a 
+                  href="tel:+17587260035" 
+                  className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-400/50 hover:bg-white/[0.08] transition-all cursor-pointer group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                    <span className="text-sm">📞</span>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-zinc-400 font-mono uppercase tracking-wider font-semibold">Call <strong>VISION79</strong></p>
+                    <p className="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-400 transition">1 758 726 0035</p>
+                  </div>
+                </a>
+
+                <a 
+                  href="mailto:vision79slu@gmail.com" 
+                  className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:border-emerald-400/50 hover:bg-white/[0.08] transition-all cursor-pointer group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                    <span className="text-sm">✉️</span>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-zinc-400 font-mono uppercase tracking-wider font-semibold">Email Inquiry</p>
+                    <p className="text-xs sm:text-sm font-bold text-white group-hover:text-emerald-400 transition font-mono">vision79slu@gmail.com</p>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -438,19 +491,19 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
             </div>
             <div>
               <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest font-bold">Product Deployment & Hosting</span>
-              <h2 className="text-xl sm:text-2xl font-bold font-display mt-0.5">4. SaaS Applications Pricing Structure</h2>
+              <h2 className="text-xl sm:text-2xl font-bold font-display mt-0.5">3. SaaS Applications Licensing Structure</h2>
             </div>
           </div>
 
           <p className="text-xs sm:text-sm text-app-text-sec max-w-3xl leading-relaxed">
-            We provide comprehensive design, hosting, and SLA maintenance tiers for our proprietary custom-built SaaS applications. Select your desired deployment model below to understand continuous licensing boundaries.
+            We provide comprehensive design, hosting, and SLA maintenance tiers for our proprietary custom-built SaaS applications. Select your desired deployment model below to understand continuous licensing boundaries. All solutions are custom budgeted based on volume.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
             {/* TIER 1: WEB APPS */}
             <div className="border border-app-border rounded-xl p-5 bg-app-btn-sec/10 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <span className="text-[9px] font-mono uppercase bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20 w-max block">
+                <span className="text-[9px] font-mono uppercase bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20 w-max block font-bold">
                   Web Platforms
                 </span>
                 <h3 className="font-bold text-base text-app-text font-display">SaaS Web Service</h3>
@@ -461,15 +514,15 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
                 <div className="pt-2 divide-y divide-app-border/35 text-[11px] text-app-text-sec space-y-2">
                   <div className="flex justify-between py-1 border-transparent">
                     <span className="font-mono">Starter Tier</span>
-                    <span className="font-bold text-app-text">{currency === "USD" ? "USD 29.00/mo" : "EC$ 80.00/mo"}</span>
+                    <span className="font-bold text-indigo-400">Custom Quoted</span>
                   </div>
                   <div className="flex justify-between py-1 pt-2 border-app-border/20">
                     <span className="font-mono">Growth Tier</span>
-                    <span className="font-bold text-indigo-400">{currency === "USD" ? "USD 69.00/mo" : "EC$ 185.00/mo"}</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Custom Quoted</span>
                   </div>
                   <div className="flex justify-between py-1 pt-2 border-app-border/20">
                     <span className="font-mono">Enterprise Node</span>
-                    <span className="font-bold text-app-text">{currency === "USD" ? "USD 199.00/mo" : "EC$ 540.00/mo"}</span>
+                    <span className="font-bold text-indigo-400">Custom Quoted</span>
                   </div>
                 </div>
               </div>
@@ -496,7 +549,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
             {/* TIER 2: DESKTOP APPS */}
             <div className="border border-indigo-500/25 rounded-xl p-5 bg-indigo-500/[0.02] flex flex-col justify-between space-y-4 shadow-lg shadow-indigo-500/5">
               <div className="space-y-3">
-                <span className="text-[9px] font-mono uppercase bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 w-max block">
+                <span className="text-[9px] font-mono uppercase bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 w-max block font-bold">
                   Desktop Binaries
                 </span>
                 <h3 className="font-bold text-base text-app-text font-display">Client-Seat Installer</h3>
@@ -507,15 +560,15 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
                 <div className="pt-2 divide-y divide-app-border/35 text-[11px] text-app-text-sec space-y-2">
                   <div className="flex justify-between py-1 border-transparent">
                     <span className="font-mono">Single Seat License</span>
-                    <span className="font-bold text-app-text">{currency === "USD" ? "USD 49.00 one-off" : "EC$ 130.00 one-off"}</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Custom Quoted</span>
                   </div>
                   <div className="flex justify-between py-1 pt-2 border-app-border/20">
                     <span className="font-mono">Team License (10 pack)</span>
-                    <span className="font-bold text-indigo-400">{currency === "USD" ? "USD 349.00 one-off" : "EC$ 940.00 one-off"}</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Custom Quoted</span>
                   </div>
                   <div className="flex justify-between py-1 pt-2 border-app-border/20">
                     <span className="font-mono">Site-Wide Access</span>
-                    <span className="font-bold text-app-text">{currency === "USD" ? "USD 899.00 / yr" : "EC$ 2,425.00 / yr"}</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Custom Quoted</span>
                   </div>
                 </div>
               </div>
@@ -542,7 +595,7 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
             {/* TIER 3: GAMES/INTERACTIVE */}
             <div className="border border-app-border rounded-xl p-5 bg-app-btn-sec/10 flex flex-col justify-between space-y-4">
               <div className="space-y-3">
-                <span className="text-[9px] font-mono uppercase bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded border border-amber-500/20 w-max block">
+                <span className="text-[9px] font-mono uppercase bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded border border-amber-500/20 w-max block font-bold">
                   Interactive Games
                 </span>
                 <h3 className="font-bold text-base text-app-text font-display">Virtual Experiences</h3>
@@ -552,16 +605,16 @@ export function ServicesPriceList({ onBack }: ServicesPriceListProps) {
                 
                 <div className="pt-2 divide-y divide-app-border/35 text-[11px] text-app-text-sec space-y-2">
                   <div className="flex justify-between py-1 border-transparent">
-                    <span className="font-mono">Indie Play licence</span>
-                    <span className="font-bold text-app-text">{currency === "USD" ? "USD 9.99 lifetime" : "EC$ 27.00 lifetime"}</span>
+                    <span className="font-mono">Indie Play License</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Custom Quoted</span>
                   </div>
                   <div className="flex justify-between py-1 pt-2 border-app-border/20">
-                    <span className="font-mono">Lobby Hosting addon</span>
-                    <span className="font-bold text-indigo-400">{currency === "USD" ? "USD 15.00/mo" : "EC$ 40.00/mo"}</span>
+                    <span className="font-mono">Lobby Hosting Addon</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Custom Quoted</span>
                   </div>
                   <div className="flex justify-between py-1 pt-2 border-app-border/20">
                     <span className="font-mono">Corporate Team Buy</span>
-                    <span className="font-bold text-app-text">Contact sales desk</span>
+                    <span className="font-bold text-indigo-400 font-semibold">Contact sales desk</span>
                   </div>
                 </div>
               </div>

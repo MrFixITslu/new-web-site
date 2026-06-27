@@ -25,6 +25,18 @@ import {
 } from "lucide-react";
 import { SaaSApp } from "../types";
 
+const getDurationText = (created: string, onboarded?: string) => {
+  if (!created || !onboarded) return "";
+  const diffMs = new Date(onboarded).getTime() - new Date(created).getTime();
+  if (diffMs <= 0) return "instant";
+  const diffMins = Math.floor(diffMs / (60 * 1000));
+  if (diffMins < 60) return `${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ${diffMins % 60}m`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ${diffHours % 24}h`;
+};
+
 interface CourseDetailPageProps {
   course: SaaSApp;
   onBack: () => void;
@@ -99,6 +111,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
   const [ratingInput, setRatingInput] = useState(5);
   const [commentInput, setCommentInput] = useState("");
   const [userNameInput, setUserNameInput] = useState("");
+  const [feedbackType, setFeedbackType] = useState<"feedback" | "idea">("idea");
 
   const fetchFeedbacks = async () => {
     try {
@@ -129,13 +142,15 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
           appName: course.name,
           rating: ratingInput,
           comment: commentInput,
-          userName: userNameInput.trim() || "Anonymous Student"
+          userName: userNameInput.trim() || "Anonymous Student",
+          feedbackType
         })
       });
       if (res.ok) {
         setSubmitSuccess(true);
         setCommentInput("");
         setRatingInput(5);
+        setFeedbackType("idea");
         fetchFeedbacks();
       } else {
         const data = await res.json();
@@ -155,6 +170,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
     setSubmitError("");
     setCommentInput("");
     setRatingInput(5);
+    setFeedbackType("idea");
   }, [course.id]);
 
   // Notes state
@@ -884,10 +900,10 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                       <div className="col-span-2 space-y-2 px-3">
                         <h4 className="text-xs font-semibold text-app-text font-display flex items-center gap-1.5">
                           <Sparkles className="w-4 h-4 text-indigo-400" />
-                          Help Us Improve VISION79!
+                          Help Us Improve {course.name}!
                         </h4>
                         <p className="text-[10px] text-app-text-sec leading-relaxed">
-                          Your ratings and recommendations directly steer our updates. Once your suggestions are onboarded and implemented, you will see an "Onboarded" badge with response from the instructor.
+                          Your ratings and recommendations directly steer our updates. Once your suggestions are onboarded and implemented into <strong>{course.name}</strong>, you will see an "Idea Onboarded & Implemented" badge with responses from the instructor.
                         </p>
                       </div>
                     </div>
@@ -900,7 +916,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                         <div className="p-4 rounded-xl border border-app-border bg-app-aside-bg/40 space-y-3.5">
                           <h4 className="text-xs font-bold text-app-text uppercase tracking-wide font-mono flex items-center gap-2">
                             <MessageSquare className="w-4 h-4 text-indigo-400" />
-                            Leave your feedback
+                            Leave your feedback for {course.name}
                           </h4>
 
                           {submitSuccess ? (
@@ -938,29 +954,69 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                                 />
                               </div>
 
-                              <div className="space-y-1">
+                              {/* Feedback Type Selector */}
+                              <div className="space-y-1.5">
                                 <label className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">
-                                  Your Rating
+                                  Submission Type
                                 </label>
-                                <div className="flex gap-1.5 py-1">
-                                  {[1, 2, 3, 4, 5].map((stars) => (
-                                    <button
-                                      key={stars}
-                                      type="button"
-                                      onClick={() => setRatingInput(stars)}
-                                      className="p-1 focus:outline-none hover:scale-115 transition bg-transparent border-none"
-                                    >
-                                      <Star
-                                        className={`w-5 h-5 transition-all ${
-                                          stars <= ratingInput
-                                            ? "fill-amber-400 text-amber-400"
-                                            : "text-zinc-600 hover:text-zinc-500"
-                                        }`}
-                                      />
-                                    </button>
-                                  ))}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setFeedbackType("idea")}
+                                    className={`py-2 px-3 text-[11px] font-mono rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                                      feedbackType === "idea"
+                                        ? "bg-amber-500/10 border-amber-500/40 text-amber-500 font-bold"
+                                        : "bg-app-input border-app-input-border text-app-text-sec hover:text-app-text"
+                                    }`}
+                                  >
+                                    <Sparkles className="w-4 h-4 text-amber-500" />
+                                    <span>Make Suggestion</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setFeedbackType("feedback")}
+                                    className={`py-2 px-3 text-[11px] font-mono rounded-xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                                      feedbackType === "feedback"
+                                        ? "bg-indigo-500/10 border-indigo-500/40 text-indigo-400 font-bold"
+                                        : "bg-app-input border-app-input-border text-app-text-sec hover:text-app-text"
+                                    }`}
+                                  >
+                                    <MessageSquare className="w-4 h-4 text-indigo-400" />
+                                    <span>Feedback</span>
+                                  </button>
                                 </div>
+                                <p className="text-[9px] text-app-text-muted font-mono leading-normal mt-1">
+                                  {feedbackType === "idea" 
+                                    ? "💡 Recommend a new course step, curriculum integration, or resource. No star rating required." 
+                                    : "💬 Provide general comments, report bugs, or rate the overall course experience."}
+                                </p>
                               </div>
+
+                              {feedbackType === "feedback" && (
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">
+                                    Your Rating
+                                  </label>
+                                  <div className="flex gap-1.5 py-1">
+                                    {[1, 2, 3, 4, 5].map((stars) => (
+                                      <button
+                                        key={stars}
+                                        type="button"
+                                        onClick={() => setRatingInput(stars)}
+                                        className="p-1 focus:outline-none hover:scale-115 transition bg-transparent border-none"
+                                      >
+                                        <Star
+                                          className={`w-5 h-5 transition-all ${
+                                            stars <= ratingInput
+                                              ? "fill-amber-400 text-amber-400"
+                                              : "text-zinc-600 hover:text-zinc-500"
+                                          }`}
+                                        />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
 
                               <div className="space-y-1">
                                 <label className="text-[10px] font-mono text-app-text-muted uppercase tracking-wider block">
@@ -970,7 +1026,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                                   value={commentInput}
                                   onChange={(e) => setCommentInput(e.target.value)}
                                   rows={3}
-                                  placeholder="Describe how we can make this app better..."
+                                  placeholder="Describe how we can make this course/curriculum better..."
                                   className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2.5 text-xs focus:outline-none focus:border-indigo-500 leading-relaxed resize-none"
                                 />
                               </div>
@@ -989,12 +1045,12 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                                 {isSubmitting ? (
                                   <>
                                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    Submitting feedback...
+                                    {feedbackType === "idea" ? "Submitting suggestion..." : "Submitting feedback..."}
                                   </>
                                 ) : (
                                   <>
                                     <Send className="w-3.5 h-3.5" />
-                                    Submit Feedback & Rating
+                                    {feedbackType === "idea" ? "Submit Suggestion" : "Submit Feedback & Rating"}
                                   </>
                                 )}
                               </button>
@@ -1004,7 +1060,7 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                       </div>
 
                       {/* COMMUNITY FEEDBACK LIST */}
-                      <div className="lg:col-span-3 space-y-3.5 max-h-[360px] overflow-y-auto pr-1">
+                      <div className="lg:col-span-3 space-y-3.5 max-h-[420px] overflow-y-auto pr-1">
                         <h4 className="text-xs font-bold text-app-text uppercase tracking-wide font-mono">
                           What other students say
                         </h4>
@@ -1025,15 +1081,41 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                                 className={`p-3.5 rounded-xl border text-xs space-y-2.5 transition relative ${
                                   item.onboarded === 1
                                     ? "bg-emerald-500/5 border-emerald-500/20"
+                                    : item.feedbackType === "idea"
+                                    ? "bg-amber-500/[0.01] border-amber-500/15"
                                     : "bg-app-btn-sec/5 border-app-border/60 hover:border-app-border"
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="space-y-0.5">
-                                    <span className="font-bold text-app-text block">
-                                      {item.userName || "Anonymous"}
-                                    </span>
-                                    <span className="text-[9px] text-app-text-muted font-mono">
+                                    <div className="flex items-center flex-wrap gap-1.5">
+                                      <span className="font-bold text-app-text">
+                                        {item.userName || "Anonymous"}
+                                      </span>
+                                      {item.feedbackType === "idea" ? (
+                                        item.onboarded === 1 ? (
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-mono font-bold uppercase tracking-wide border border-emerald-500/25">
+                                              Suggestion Onboarded & Implemented ✅
+                                            </span>
+                                            {item.onboardedAt && (
+                                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-emerald-300 font-mono border border-emerald-500/10 flex items-center gap-1">
+                                                ⏱️ Onboarded in {getDurationText(item.createdAt, item.onboardedAt)}
+                                              </span>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono font-bold uppercase tracking-wide border border-amber-500/25">
+                                            Suggestion 💡
+                                          </span>
+                                        )
+                                      ) : (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono font-bold uppercase tracking-wide border border-indigo-500/15">
+                                          Feedback 💬
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] text-app-text-muted font-mono block">
                                       {new Date(item.createdAt).toLocaleDateString("en-US", {
                                         year: "numeric",
                                         month: "short",
@@ -1042,14 +1124,16 @@ export function CourseDetailPage({ course, onBack }: CourseDetailPageProps) {
                                     </span>
                                   </div>
 
-                                  <div className="flex gap-0.5 text-amber-400">
-                                    {Array.from({ length: 5 }).map((_, idx) => (
-                                      <Star
-                                        key={idx}
-                                        className={`w-3 h-3 ${idx < item.rating ? "fill-amber-400 text-amber-400" : "text-zinc-700"}`}
-                                      />
-                                    ))}
-                                  </div>
+                                  {item.feedbackType !== "idea" && (
+                                    <div className="flex gap-0.5 text-amber-400 shrink-0">
+                                      {Array.from({ length: 5 }).map((_, idx) => (
+                                        <Star
+                                          key={idx}
+                                          className={`w-3 h-3 ${idx < item.rating ? "fill-amber-400 text-amber-400" : "text-zinc-700"}`}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
 
                                 <p className="text-app-text-sec leading-relaxed text-[11px]">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Plus, 
@@ -23,7 +23,8 @@ import {
   BookOpen,
   UploadCloud,
   Check,
-  Loader2
+  Loader2,
+  Bell
 } from "lucide-react";
 import { SaaSApp, AppStatistics, SaaSAd } from "./types";
 import { AppLogo, PRESET_ICONS } from "./components/AppLogo";
@@ -36,6 +37,18 @@ import {
   CartesianGrid,
   Tooltip
 } from "recharts";
+
+const getDurationText = (created: string, onboarded?: string) => {
+  if (!created || !onboarded) return "";
+  const diffMs = new Date(onboarded).getTime() - new Date(created).getTime();
+  if (diffMs <= 0) return "instant";
+  const diffMins = Math.floor(diffMs / (60 * 1000));
+  if (diffMins < 60) return `${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ${diffMins % 60}m`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ${diffHours % 24}h`;
+};
 
 const safeSessionStorage = {
   getItem(key: string): string | null {
@@ -610,6 +623,108 @@ export default function AdminApp() {
   const [feedbacksLoading, setFeedbacksLoading] = useState(false);
   const [onboardComments, setOnboardComments] = useState<Record<number, string>>({});
   const [submittingOnboardId, setSubmittingOnboardId] = useState<number | null>(null);
+  const [selectedFeedbackToolId, setSelectedFeedbackToolId] = useState<number | "all">("all");
+  const [selectedFeedbackRatingFilter, setSelectedFeedbackRatingFilter] = useState<number | "all">("all");
+  const [selectedFeedbackTypeFilter, setSelectedFeedbackTypeFilter] = useState<"all" | "idea" | "feedback">("all");
+  const [dismissedNotifications, setDismissedNotifications] = useState<string[]>([]);
+
+  const notifications = useMemo(() => {
+    const list: Array<{
+      id: string;
+      type: "suggestion" | "quality" | "ad" | "system";
+      severity: "low" | "medium" | "high";
+      title: string;
+      message: string;
+      timestamp: string;
+      action?: () => void;
+    }> = [];
+
+    // 1. Unaddressed Suggestions
+    feedbacks.forEach(f => {
+      if (f.feedbackType === "idea" && f.onboarded !== 1) {
+        list.push({
+          id: `suggestion-${f.id}`,
+          type: "suggestion",
+          severity: "medium",
+          title: "Pending Suggestion",
+          message: `💡 ${f.userName || "Anonymous"} recommended: "${f.comment.length > 55 ? f.comment.substring(0, 55) + "..." : f.comment}" for "${f.appName || `Tool #${f.appId}`}"`,
+          timestamp: f.createdAt,
+          action: () => {
+            setSelectedFeedbackTypeFilter("idea");
+            setSelectedFeedbackRatingFilter("all");
+            setSelectedFeedbackToolId("all");
+            setTimeout(() => {
+              const el = document.getElementById(`feedback-card-${f.id}`);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.classList.add("ring-2", "ring-indigo-500", "scale-[1.03]");
+                setTimeout(() => {
+                  el.classList.remove("ring-2", "ring-indigo-500", "scale-[1.03]");
+                }, 3000);
+              }
+            }, 100);
+          }
+        });
+      }
+    });
+
+    // 2. Urgent Quality Alerts (Low Rating)
+    feedbacks.forEach(f => {
+      if (f.feedbackType !== "idea" && f.rating <= 2) {
+        list.push({
+          id: `quality-${f.id}`,
+          type: "quality",
+          severity: "high",
+          title: "Low Rating Alert",
+          message: `⚠️ Urgent: ${f.userName || "Anonymous"} gave ${f.rating}★ to "${f.appName || `Tool #${f.appId}`}" - "${f.comment.length > 55 ? f.comment.substring(0, 55) + "..." : f.comment}"`,
+          timestamp: f.createdAt,
+          action: () => {
+            setSelectedFeedbackTypeFilter("feedback");
+            setSelectedFeedbackRatingFilter("all");
+            setSelectedFeedbackToolId("all");
+            setTimeout(() => {
+              const el = document.getElementById(`feedback-card-${f.id}`);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.classList.add("ring-2", "ring-red-500", "scale-[1.03]");
+                setTimeout(() => {
+                  el.classList.remove("ring-2", "ring-red-500", "scale-[1.03]");
+                }, 3000);
+              }
+            }, 100);
+          }
+        });
+      }
+    });
+
+    // 3. No Active Promotion Ads Alert
+    if (ads.length === 0) {
+      list.push({
+        id: "ads-empty",
+        type: "ad",
+        severity: "medium",
+        title: "No Active Campaign Slides",
+        message: "📢 System Warning: No promotional spotlight carousel ads are running. Spotlight section will be empty on explorer page.",
+        timestamp: new Date().toISOString(),
+        action: () => {
+          const el = document.getElementById("ads-control-workspace");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      });
+    }
+
+    // Sort by timestamp (newest first, but keep high severity prioritized)
+    return list
+      .filter(n => !dismissedNotifications.includes(n.id))
+      .sort((a, b) => {
+        const severityWeight = { high: 3, medium: 2, low: 1 };
+        const sevDiff = severityWeight[b.severity] - severityWeight[a.severity];
+        if (sevDiff !== 0) return sevDiff;
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+  }, [feedbacks, ads, dismissedNotifications]);
 
   const fetchAllFeedbacks = async () => {
     try {
@@ -1041,6 +1156,99 @@ export default function AdminApp() {
                         <span id="stat-total-launches" className="text-2xl font-mono font-bold text-emerald-500 dark:text-emerald-400 block">{stats.totalLaunches.toLocaleString()}</span>
                       </div>
                     </div>
+                  </section>
+
+                  {/* CENTRAL NOTIFICATIONS & ALERTS HUB */}
+                  <section className="glass rounded-2xl p-6 bg-app-aside-bg/50 border border-indigo-500/10 space-y-4">
+                    <div className="flex items-center justify-between border-b border-app-border/45 pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="relative">
+                          <Bell className="w-5 h-5 text-indigo-400" />
+                          {notifications.length > 0 && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center animate-bounce">
+                              {notifications.length}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold uppercase tracking-wider font-display text-app-text flex items-center gap-2">
+                            VISION79 Central Alerts & Action Hub
+                          </h3>
+                          <p className="text-[11px] text-app-text-sec">
+                            Monitor actionable items, pending curriculum suggestions, and system alerts to keep the SaaS registry optimized.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                        {notifications.length === 0 ? "All clear! ✨" : `${notifications.length} Active Alerts`}
+                      </div>
+                    </div>
+
+                    {notifications.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center justify-center text-center space-y-2 bg-app-btn-sec/15 rounded-xl border border-dashed border-app-border/45">
+                        <CheckCircle className="w-8 h-8 text-emerald-400" />
+                        <span className="text-xs font-semibold text-app-text">Zero Pending Alerts</span>
+                        <span className="text-[10px] font-mono text-app-text-muted">All user suggestions have been onboarded, ratings are high, and promotional slides are active!</span>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[280px] overflow-y-auto pr-1">
+                        {notifications.map((n) => (
+                          <div 
+                            key={n.id}
+                            className={`p-3.5 rounded-xl border text-xs flex flex-col justify-between transition-all hover:scale-[1.01] ${
+                              n.severity === "high" 
+                                ? "bg-rose-500/5 border-rose-500/25 hover:border-rose-500/40 text-rose-300"
+                                : n.type === "suggestion"
+                                ? "bg-amber-500/5 border-amber-500/25 hover:border-amber-500/40 text-amber-300"
+                                : "bg-indigo-500/5 border-indigo-500/20 hover:border-indigo-500/35 text-indigo-300"
+                            }`}
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-start gap-2">
+                                <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wide border ${
+                                  n.severity === "high"
+                                    ? "bg-rose-500/10 border-rose-500/25 text-rose-400"
+                                    : n.type === "suggestion"
+                                    ? "bg-amber-500/10 border-amber-500/25 text-amber-400"
+                                    : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                                }`}>
+                                  {n.title}
+                                </span>
+                                <span className="text-[9px] text-app-text-muted font-mono">
+                                  {new Date(n.timestamp).toLocaleDateString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                </span>
+                              </div>
+                              <p className="text-[11px] leading-relaxed text-app-text">
+                                {n.message}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t border-app-border/20">
+                              <button
+                                onClick={() => setDismissedNotifications(prev => [...prev, n.id])}
+                                className="text-[10px] px-2 py-1 hover:bg-app-bg text-app-text-sec rounded transition cursor-pointer"
+                              >
+                                Dismiss
+                              </button>
+                              {n.action && (
+                                <button
+                                  onClick={n.action}
+                                  className={`text-[10px] font-bold px-2.5 py-1 rounded transition cursor-pointer flex items-center gap-1 ${
+                                    n.severity === "high"
+                                      ? "bg-rose-500/15 hover:bg-rose-500/25 text-rose-300"
+                                      : n.type === "suggestion"
+                                      ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300"
+                                      : "bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300"
+                                  }`}
+                                >
+                                  Address Alert <ArrowRight className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </section>
 
                   {/* GROWTH TREND LINE CHART */}
@@ -1646,7 +1854,7 @@ export default function AdminApp() {
                   </section>
 
                   {/* CAROUSEL ADS CONTROL WORKSPACE */}
-                  <div className="pt-8 border-t border-app-border/45 space-y-6">
+                  <div id="ads-control-workspace" className="pt-8 border-t border-app-border/45 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -1803,7 +2011,7 @@ export default function AdminApp() {
                   </div>
 
                   {/* USER FEEDBACK & ONBOARDING WORKSPACE */}
-                  <div className="pt-8 border-t border-app-border/45 space-y-6">
+                  <div id="user-feedback-workspace" className="pt-8 border-t border-app-border/45 space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
@@ -1831,98 +2039,312 @@ export default function AdminApp() {
                         <div className="text-xs text-app-text-muted font-mono py-12 text-center bg-app-btn-sec/10 rounded-xl border border-dashed border-app-border">
                           No user feedback items found in the database.
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                          {feedbacks.map((f) => (
-                            <div
-                              key={f.id}
-                              className={`p-4 rounded-xl border text-xs space-y-3.5 flex flex-col justify-between ${
-                                f.onboarded === 1
-                                  ? "bg-emerald-500/5 border-emerald-500/20"
-                                  : "bg-app-btn-sec/15 border-app-border/60 hover:border-app-border"
-                              }`}
-                            >
-                              <div className="space-y-2">
-                                <div className="flex justify-between items-start gap-2">
-                                  <div>
-                                    <span className="font-bold text-app-text text-[13px] block">
-                                      {f.userName || "Anonymous student"}
+                      ) : (() => {
+                        // Gather stats on the fly
+                        const stats: Record<number, { count: number; sumRating: number; pendingCount: number; appName: string }> = {};
+                        feedbacks.forEach(f => {
+                          if (!stats[f.appId]) {
+                            stats[f.appId] = { count: 0, sumRating: 0, pendingCount: 0, appName: f.appName || `Tool #${f.appId}` };
+                          }
+                          stats[f.appId].count++;
+                          stats[f.appId].sumRating += f.rating;
+                          if (f.onboarded !== 1) {
+                            stats[f.appId].pendingCount++;
+                          }
+                        });
+
+                        const uniqueToolIds = Array.from(new Set(feedbacks.map(f => f.appId))) as number[];
+                        const matchedFeedbacks = feedbacks.filter(f => {
+                          const matchesTool = selectedFeedbackToolId === "all" || f.appId === selectedFeedbackToolId;
+                          const matchesRating = selectedFeedbackRatingFilter === "all" || f.rating === selectedFeedbackRatingFilter;
+                          const matchesType = selectedFeedbackTypeFilter === "all" ||
+                            (selectedFeedbackTypeFilter === "idea" && f.feedbackType === "idea") ||
+                            (selectedFeedbackTypeFilter === "feedback" && f.feedbackType !== "idea");
+                          return matchesTool && matchesRating && matchesType;
+                        });
+
+                        return (
+                          <div className="space-y-6">
+                            {/* Filter Bar & Per-Tool separation controls */}
+                            <div className="flex flex-col gap-4">
+                              {/* Tool Selection Tabs */}
+                              <div>
+                                <label className="text-[10px] text-app-text-muted uppercase font-mono tracking-wider block mb-2">
+                                  Filter & Separate Data By Tool:
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={() => setSelectedFeedbackToolId("all")}
+                                    className={`px-3 py-2 text-xs font-mono rounded-xl border transition cursor-pointer flex items-center gap-2 ${
+                                      selectedFeedbackToolId === "all"
+                                        ? "bg-indigo-600 border-indigo-500 text-white font-bold"
+                                        : "bg-app-btn-sec/40 border-app-border text-app-text-sec hover:text-app-text"
+                                    }`}
+                                  >
+                                    <span>All Tools</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/25 text-white/90">
+                                      {feedbacks.length}
                                     </span>
-                                    <span className="text-[10px] text-indigo-400 font-medium font-mono">
-                                      App: {f.appName || `App #${f.appId}`}
+                                  </button>
+
+                                  {uniqueToolIds.map(tId => {
+                                    const tStats = stats[tId];
+                                    const avg = tStats.count > 0 ? (tStats.sumRating / tStats.count).toFixed(1) : "0.0";
+                                    const appDetails = apps.find(a => a.id === tId);
+                                    
+                                    return (
+                                      <button
+                                        key={tId}
+                                        onClick={() => setSelectedFeedbackToolId(tId)}
+                                        className={`px-3 py-2 text-xs font-mono rounded-xl border transition cursor-pointer flex items-center gap-2 ${
+                                          selectedFeedbackToolId === tId
+                                            ? "bg-indigo-600 border-indigo-500 text-white font-bold"
+                                            : "bg-app-btn-sec/40 border-app-border text-app-text-sec hover:text-app-text"
+                                        }`}
+                                      >
+                                        {appDetails && (
+                                          <div className="w-3.5 h-3.5 rounded-sm overflow-hidden shrink-0 bg-neutral-900 flex items-center justify-center">
+                                            <AppLogo logoUrl={appDetails.logoUrl} />
+                                          </div>
+                                        )}
+                                        <span className="max-w-[140px] truncate">{tStats.appName}</span>
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-black/25 text-amber-400 font-bold">
+                                          ★ {avg} ({tStats.count})
+                                        </span>
+                                        {tStats.pendingCount > 0 && (
+                                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title={`${tStats.pendingCount} pending onboard response`} />
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Rating & Onboarded State Filter Bar */}
+                              <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-app-border/20">
+                                <div className="flex flex-wrap items-center gap-6">
+                                  {/* Feedback Type Segment Filter */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-app-text-muted uppercase font-mono tracking-wider">
+                                      Feedback Type:
                                     </span>
+                                    <div className="flex gap-1 bg-black/20 p-1 rounded-xl border border-app-border/10">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedFeedbackTypeFilter("all")}
+                                        className={`px-2.5 py-1 text-[10px] font-mono rounded-lg transition cursor-pointer ${
+                                          selectedFeedbackTypeFilter === "all"
+                                            ? "bg-indigo-600 text-white font-bold"
+                                            : "text-app-text-sec hover:text-app-text"
+                                        }`}
+                                      >
+                                        All ({feedbacks.length})
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedFeedbackTypeFilter("idea")}
+                                        className={`px-2.5 py-1 text-[10px] font-mono rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                                          selectedFeedbackTypeFilter === "idea"
+                                            ? "bg-amber-500/15 text-amber-400 border border-amber-500/30 font-bold"
+                                            : "text-app-text-sec hover:text-amber-500"
+                                        }`}
+                                      >
+                                        <Sparkles className="w-3 h-3 text-amber-500" />
+                                        <span>Suggestions ({feedbacks.filter(f => f.feedbackType === "idea").length})</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedFeedbackTypeFilter("feedback")}
+                                        className={`px-2.5 py-1 text-[10px] font-mono rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                                          selectedFeedbackTypeFilter === "feedback"
+                                            ? "bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 font-bold"
+                                            : "text-app-text-sec hover:text-indigo-400"
+                                        }`}
+                                      >
+                                        <MessageSquare className="w-3 h-3 text-indigo-400" />
+                                        <span>Feedback ({feedbacks.filter(f => f.feedbackType !== "idea").length})</span>
+                                      </button>
+                                    </div>
                                   </div>
 
-                                  <div className="flex gap-0.5 text-amber-400 shrink-0">
-                                    {Array.from({ length: 5 }).map((_, idx) => (
-                                      <Star
-                                        key={idx}
-                                        className={`w-3.5 h-3.5 ${idx < f.rating ? "fill-amber-400 text-amber-400" : "text-zinc-600"}`}
-                                      />
-                                    ))}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-app-text-muted uppercase font-mono tracking-wider">
+                                      Rating Score:
+                                    </span>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => setSelectedFeedbackRatingFilter("all")}
+                                        className={`px-2 py-1 text-[10px] font-mono rounded-lg border transition cursor-pointer ${
+                                          selectedFeedbackRatingFilter === "all"
+                                            ? "bg-app-text text-app-bg font-bold border-transparent"
+                                            : "bg-app-btn-sec/20 border-app-border/40 text-app-text-sec"
+                                        }`}
+                                      >
+                                        All
+                                      </button>
+                                      {[5, 4, 3, 2, 1].map(r => (
+                                        <button
+                                          key={r}
+                                          onClick={() => setSelectedFeedbackRatingFilter(r)}
+                                          className={`px-2 py-1 text-[10px] font-mono rounded-lg border transition cursor-pointer flex items-center gap-0.5 ${
+                                            selectedFeedbackRatingFilter === r
+                                              ? "bg-amber-500/10 border-amber-500/40 text-amber-500 font-bold"
+                                              : "bg-app-btn-sec/20 border-app-border/40 text-app-text-sec"
+                                          }`}
+                                        >
+                                          {r}★
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
 
-                                <p className="text-app-text-sec text-[11px] leading-relaxed italic">
-                                  "{f.comment}"
-                                </p>
-
-                                <span className="text-[9px] text-app-text-muted font-mono block">
-                                  Received: {new Date(f.createdAt).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit"
-                                  })}
-                                </span>
+                                <div className="text-[11px] text-app-text-muted font-mono">
+                                  Showing <strong className="text-app-text">{matchedFeedbacks.length}</strong> of <strong className="text-app-text">{feedbacks.length}</strong> suggestions
+                                </div>
                               </div>
-
-                              <div className="pt-3 border-t border-app-border/40 space-y-2">
-                                {f.onboarded === 1 ? (
-                                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 space-y-1">
-                                    <div className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 font-mono uppercase tracking-wide">
-                                      <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                                      Onboarded & Implemented ✅
-                                    </div>
-                                    <p className="text-[10px] text-app-text-sec leading-relaxed italic font-mono pl-5">
-                                      "{f.onboardedComment}"
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-2">
-                                    <textarea
-                                      value={onboardComments[f.id] || ""}
-                                      onChange={(e) => setOnboardComments({ ...onboardComments, [f.id]: e.target.value })}
-                                      placeholder="Explain how this feedback is onboarded/implemented in V79..."
-                                      rows={2}
-                                      className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-[10px] placeholder:text-app-text-muted/65 focus:outline-none focus:border-app-border/80 leading-normal resize-none font-mono"
-                                    />
-                                    <button
-                                      onClick={() => handleOnboardFeedback(f.id)}
-                                      disabled={submittingOnboardId === f.id}
-                                      className="w-full py-1.5 text-[10px] font-mono tracking-wider uppercase font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition flex items-center justify-center gap-1"
-                                    >
-                                      {submittingOnboardId === f.id ? (
-                                        <>
-                                          <div className="w-2.5 h-2.5 border border-white border-t-transparent rounded-full animate-spin"></div>
-                                          Processing...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Sparkles className="w-3 h-3 text-indigo-200" />
-                                          Mark as Onboarded
-                                        </>
-                                      )}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-
                             </div>
-                          ))}
-                        </div>
-                      )}
+
+                            {/* Main feedback list */}
+                            {matchedFeedbacks.length === 0 ? (
+                              <div className="text-xs text-app-text-muted font-mono py-12 text-center bg-app-btn-sec/10 rounded-xl border border-dashed border-app-border">
+                                No feedback items match the selected filters.
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {matchedFeedbacks.map((f) => (
+                                  <div
+                                    key={f.id}
+                                    id={`feedback-card-${f.id}`}
+                                    className={`p-4 rounded-xl border text-xs space-y-3.5 flex flex-col justify-between transition-all duration-300 ${
+                                      f.onboarded === 1
+                                        ? "bg-emerald-500/5 border-emerald-500/20"
+                                        : f.feedbackType === "idea"
+                                        ? "bg-amber-500/[0.01] border-amber-500/15"
+                                        : "bg-app-btn-sec/15 border-app-border/60 hover:border-app-border"
+                                    }`}
+                                  >
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between items-start gap-2">
+                                        <div>
+                                          <div className="flex items-center flex-wrap gap-1.5 mb-1">
+                                            <span className="font-bold text-app-text text-[13px]">
+                                              {f.userName || "Anonymous student"}
+                                            </span>
+                                            {f.feedbackType === "idea" ? (
+                                              f.onboarded === 1 ? (
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono font-bold uppercase tracking-wide border border-emerald-500/20">
+                                                    Suggestion Onboarded ✅
+                                                  </span>
+                                                  {f.onboardedAt && (
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-emerald-300 font-mono border border-emerald-500/10 flex items-center gap-1" title="Duration between suggestion submission and onboarding">
+                                                      ⏱️ {getDurationText(f.createdAt, f.onboardedAt)}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono font-bold uppercase tracking-wide border border-amber-500/20">
+                                                  Suggestion 💡
+                                                </span>
+                                              )
+                                            ) : (
+                                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono font-bold uppercase tracking-wide border border-indigo-500/15">
+                                                Feedback 💬
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className="text-[10px] text-indigo-400 font-medium font-mono">
+                                            App: {f.appName || `App #${f.appId}`}
+                                          </span>
+                                        </div>
+
+                                        {f.feedbackType !== "idea" && (
+                                          <div className="flex gap-0.5 text-amber-400 shrink-0">
+                                            {Array.from({ length: 5 }).map((_, idx) => (
+                                              <Star
+                                                key={idx}
+                                                className={`w-3.5 h-3.5 ${idx < f.rating ? "fill-amber-400 text-amber-400" : "text-zinc-600"}`}
+                                              />
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <p className="text-app-text-sec text-[11px] leading-relaxed italic">
+                                        "{f.comment}"
+                                      </p>
+
+                                      <span className="text-[9px] text-app-text-muted font-mono block">
+                                        Received: {new Date(f.createdAt).toLocaleDateString("en-US", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit"
+                                        })}
+                                      </span>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-app-border/40 space-y-2">
+                                      {f.feedbackType === "idea" ? (
+                                        f.onboarded === 1 ? (
+                                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 space-y-1">
+                                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-emerald-400 font-mono uppercase tracking-wide">
+                                              <CheckCircle className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                                              Onboarded & Implemented ✅
+                                            </div>
+                                            <p className="text-[10px] text-app-text-sec leading-relaxed italic font-mono pl-5">
+                                              "{f.onboardedComment}"
+                                            </p>
+                                          </div>
+                                        ) : (
+                                          <div className="space-y-2">
+                                            <div className="text-[10px] text-amber-500 font-mono font-bold flex items-center gap-1">
+                                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                              Note: Consider for Onboarding
+                                            </div>
+                                            <textarea
+                                              value={onboardComments[f.id] || ""}
+                                              onChange={(e) => setOnboardComments({ ...onboardComments, [f.id]: e.target.value })}
+                                              placeholder="Explain how this feedback is onboarded/implemented in V79..."
+                                              rows={2}
+                                              className="w-full bg-app-input border border-app-input-border text-app-text rounded-lg p-2 text-[10px] placeholder:text-app-text-muted/65 focus:outline-none focus:border-app-border/80 leading-normal resize-none font-mono"
+                                            />
+                                            <button
+                                              onClick={() => handleOnboardFeedback(f.id)}
+                                              disabled={submittingOnboardId === f.id}
+                                              className="w-full py-1.5 text-[10px] font-mono tracking-wider uppercase font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition flex items-center justify-center gap-1"
+                                            >
+                                              {submittingOnboardId === f.id ? (
+                                                <>
+                                                  <div className="w-2.5 h-2.5 border border-white border-t-transparent rounded-full animate-spin"></div>
+                                                  Processing...
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Sparkles className="w-3 h-3 text-indigo-200" />
+                                                  Mark as Onboarded
+                                                </>
+                                              )}
+                                            </button>
+                                          </div>
+                                        )
+                                      ) : (
+                                        <div className="bg-slate-500/5 border border-slate-500/10 rounded-lg p-2.5 text-[10px] font-mono text-app-text-muted leading-relaxed flex items-center gap-1.5">
+                                          <MessageSquare className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
+                                          <span>Feedback. No onboarding actions needed.</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </motion.div>

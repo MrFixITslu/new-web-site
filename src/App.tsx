@@ -19,12 +19,14 @@ import {
   Gamepad2,
   GraduationCap,
   Star,
-  Coins
+  Coins,
+  Heart
 } from "lucide-react";
 import { SaaSApp, CategoryFilter, SaaSAd } from "./types";
 import { AppLogo } from "./components/AppLogo";
 import { CourseDetailPage } from "./components/CourseDetailPage";
 import { ServicesPriceList } from "./components/ServicesPriceList";
+import { OnboardingFeedback } from "./components/OnboardingFeedback";
 
 const isPromoActive = (app: SaaSApp) => {
   if (app.category !== "courses" || !app.createdAt) return false;
@@ -41,6 +43,7 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<SaaSApp | null>(null);
   const [showServicesPriceList, setShowServicesPriceList] = useState<boolean>(false);
+  const [selectedToolForFeedback, setSelectedToolForFeedback] = useState<SaaSApp | null>(null);
 
   // Ad carousel variables
   const [ads, setAds] = useState<SaaSAd[]>([]);
@@ -161,6 +164,7 @@ export default function App() {
     setSelectedCategory(category);
     setSelectedCourse(null);
     setShowServicesPriceList(false);
+    setSelectedToolForFeedback(null);
   };
 
   // Filters application dataset logic
@@ -179,8 +183,8 @@ export default function App() {
     <div className="flex flex-col min-h-screen border border-app-border bg-app-bg text-app-text selection:bg-app-border/40 antialiased">
       
       {/* PROFESSIONAL POLISH SYSTEM HEADER */}
-      <header className="h-16 flex items-center justify-between px-8 border-b border-app-border bg-app-header-bg backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedCategory("all"); setSearchQuery(""); setSelectedCourse(null); setShowServicesPriceList(false); }}>
+      <header className="h-16 flex items-center justify-between px-8 border-b border-b-app-border bg-app-header-bg backdrop-blur-md sticky top-0 z-50">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setSelectedCategory("all"); setSearchQuery(""); setSelectedCourse(null); setShowServicesPriceList(false); setSelectedToolForFeedback(null); }}>
           <div className="w-8 h-8 rounded-md flex items-center justify-center font-black text-xs tracking-tighter bg-app-text text-app-bg">V79</div>
           <span className="font-bold text-lg tracking-tighter text-app-text font-display">VISION79</span>
           <div className="h-4 w-px bg-app-border mx-2"></div>
@@ -190,7 +194,7 @@ export default function App() {
         <nav className="flex items-center gap-6 text-sm font-medium">
           <button 
             id="btn-explore"
-            onClick={() => { setSelectedCategory("all"); setSelectedCourse(null); setShowServicesPriceList(false); }}
+            onClick={() => { setSelectedCategory("all"); setSelectedCourse(null); setShowServicesPriceList(false); setSelectedToolForFeedback(null); }}
             className="transition font-sans text-app-text font-semibold cursor-pointer"
           >
             Explore
@@ -216,10 +220,29 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden">
         
         {/* LEFT ASIDE BAR PANEL */}
-        <aside className="w-64 border-r border-app-border p-6 flex flex-col gap-8 bg-app-aside-bg shrink-0 hidden md:flex">
-          <div className="space-y-4">
-            <h3 className="text-[10px] font-bold text-app-text-muted uppercase tracking-widest">Categories</h3>
-            <ul className="space-y-2 text-sm">
+        <aside className="w-64 border-r border-app-border p-6 flex flex-col gap-6 bg-app-aside-bg shrink-0 hidden md:flex">
+          
+          {/* SERVICE PRICE LIST NAV */}
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-bold text-app-text-muted uppercase tracking-widest font-mono">Solutions</h3>
+            <button 
+              id="filter-services"
+              onClick={() => { setShowServicesPriceList(true); setSelectedCourse(null); setSelectedToolForFeedback(null); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-250 border text-left text-sm ${
+                showServicesPriceList
+                  ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-500 dark:text-emerald-400 font-extrabold shadow-sm"
+                  : "text-app-text-sec hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-500/[0.04] border-app-border bg-app-btn-sec/20"
+              }`}
+            >
+              <Coins className="w-4 h-4 stroke-[1.8] text-emerald-500 dark:text-emerald-400" />
+              <span className="font-semibold">Services</span>
+            </button>
+          </div>
+
+          {/* CATEGORIES WITH THE LIST OF TOOLS */}
+          <div className="space-y-3">
+            <h3 className="text-[10px] font-bold text-app-text-muted uppercase tracking-widest font-mono">Tool Categories</h3>
+            <ul className="space-y-1 text-sm">
               <li 
                 id="filter-all"
                 onClick={() => handleSelectCategory("all")}
@@ -280,23 +303,19 @@ export default function App() {
                 <GraduationCap className="w-4 h-4 stroke-[1.8] text-indigo-500 dark:text-indigo-400" />
                 Courses
               </li>
-
-              {/* Fire Lion Services Pricing List Nav Panel */}
-              <li 
-                id="filter-services"
-                onClick={() => { setShowServicesPriceList(true); setSelectedCourse(null); }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-250 border ${
-                  showServicesPriceList
-                    ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-500 dark:text-emerald-400 font-extrabold shadow-sm"
-                    : "text-app-text-sec hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-500/[0.04] border-transparent"
-                }`}
-              >
-                <Coins className="w-4 h-4 stroke-[1.8] text-emerald-500 dark:text-emerald-400" />
-                Services Price List
-              </li>
             </ul>
           </div>
 
+          {/* Golden Rating Callout Widget */}
+          <div className="mt-auto p-4 rounded-xl border border-amber-500/25 bg-amber-500/[0.03] space-y-2">
+            <div className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400">
+              <Star className="w-4.5 h-4.5 fill-amber-500 text-amber-500" />
+              <span className="text-[11px] font-bold uppercase tracking-wide font-mono">Per-Tool Ratings</span>
+            </div>
+            <p className="text-[10px] text-app-text-sec leading-relaxed">
+              Click on any tool, course, or game card to read community comments, submit suggestions, and rate its onboarding with gold stars!
+            </p>
+          </div>
 
         </aside>
 
@@ -315,6 +334,19 @@ export default function App() {
                 >
                   <ServicesPriceList 
                     onBack={() => setShowServicesPriceList(false)}
+                  />
+                </motion.div>
+              ) : selectedToolForFeedback ? (
+                <motion.div
+                  key="onboarding-feedback-view"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <OnboardingFeedback 
+                    app={selectedToolForFeedback}
+                    onBack={() => setSelectedToolForFeedback(null)}
                   />
                 </motion.div>
               ) : selectedCourse ? (
@@ -340,13 +372,88 @@ export default function App() {
                   className="space-y-8"
                 >
                   {/* Hero Text Block */}
-                  <div className="flex flex-col gap-1 max-w-3xl">
-                    <h1 className="text-4xl font-semibold tracking-tight font-display text-app-text">
+                  <div className="flex flex-col gap-1.5 max-w-3xl">
+                    <h1 className="text-4xl font-extrabold tracking-tight font-display text-white">
                       Discover the Stack.
                     </h1>
-                    <p className="text-app-text-sec text-lg font-light leading-snug">
-                      Sleek, high-performance tools engineered for modern engineering teams.
+                    <p className="text-app-text-sec text-base font-light leading-snug">
+                      High-performance tools, custom-built applications, and enterprise ICT solutions designed to power Saint Lucian enterprises.
                     </p>
+                  </div>
+
+                  {/* PROFESSIONAL ABOUT VISION79 SHOWCASE CARD */}
+                  <div className="p-6 sm:p-8 rounded-2xl border border-indigo-500/15 bg-indigo-500/[0.02] relative overflow-hidden space-y-6 shadow-xl">
+                    {/* Visual gradients */}
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-65 h-65 bg-emerald-500/5 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none" />
+
+                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-app-border/45">
+                      <div className="space-y-2 max-w-2xl">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono text-indigo-400 font-extrabold uppercase tracking-widest bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+                            Saint Lucia Premium Managed Service Provider
+                          </span>
+                        </div>
+                        <h2 className="text-2xl sm:text-3xl font-extrabold font-display text-white tracking-tight leading-tight">
+                          VISION79 ICT Systems Integration
+                        </h2>
+                        <p className="text-xs sm:text-sm text-app-text-sec font-light leading-relaxed">
+                          We design resilient, high-availability system architecture, secure digital assets against advanced threat vectors, and provide flawless proactive support for Saint Lucian enterprises and Caribbean SMEs.
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 w-full sm:w-auto">
+                        <a 
+                          href="tel:+17587260035"
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md border border-indigo-500 cursor-pointer text-center"
+                        >
+                          📞 Call <strong className="font-extrabold">VISION79</strong>: 1 758 726 0035
+                        </a>
+                        <a 
+                          href="mailto:vision79slu@gmail.com"
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all border border-zinc-700 cursor-pointer text-center font-mono"
+                        >
+                          ✉️ vision79slu@gmail.com
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Breakdown of core services with beautiful hover interaction */}
+                    <div className="relative z-10 space-y-3.5">
+                      <span className="text-[10px] font-mono uppercase font-extrabold text-indigo-400/80 tracking-widest block">
+                        Our ICT Services Portfolio:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="p-4 rounded-xl border border-app-border bg-app-aside-bg/30 space-y-2 hover:border-indigo-500/35 hover:bg-indigo-500/[0.02] transition duration-300">
+                          <div className="text-xl">🛡️</div>
+                          <h4 className="font-bold text-xs text-white uppercase tracking-wider font-mono">Managed Support</h4>
+                          <p className="text-[11px] text-app-text-sec leading-relaxed font-light">
+                            Proactive 24/7 endpoint monitoring, remote desktop support desk, and prompt on-site diagnostics to minimize operational downtime.
+                          </p>
+                        </div>
+                        <div className="p-4 rounded-xl border border-app-border bg-app-aside-bg/30 space-y-2 hover:border-emerald-500/35 hover:bg-emerald-500/[0.02] transition duration-300">
+                          <div className="text-xl">☁️</div>
+                          <h4 className="font-bold text-xs text-white uppercase tracking-wider font-mono">Cloud Backup Nodes</h4>
+                          <p className="text-[11px] text-app-text-sec leading-relaxed font-light">
+                            Redundant automated cloud storage clusters, hot-site disaster recovery strategies, and safe databases.
+                          </p>
+                        </div>
+                        <div className="p-4 rounded-xl border border-app-border bg-app-aside-bg/30 space-y-2 hover:border-amber-500/35 hover:bg-amber-500/[0.02] transition duration-300">
+                          <div className="text-xl">🔒</div>
+                          <h4 className="font-bold text-xs text-white uppercase tracking-wider font-mono">Cyber Security</h4>
+                          <p className="text-[11px] text-app-text-sec leading-relaxed font-light">
+                            Advanced endpoint threat defense, active network vulnerability audits, local registry compliance, and perimeter security.
+                          </p>
+                        </div>
+                        <div className="p-4 rounded-xl border border-app-border bg-app-aside-bg/30 space-y-2 hover:border-rose-500/35 hover:bg-rose-500/[0.02] transition duration-300">
+                          <div className="text-xl">💻</div>
+                          <h4 className="font-bold text-xs text-white uppercase tracking-wider font-mono">SaaS Engineering</h4>
+                          <p className="text-[11px] text-app-text-sec leading-relaxed font-light">
+                            Engineered high-performance cloud databases, custom desktop executables, responsive web applications, and web integration.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                 {/* PROMOTION ADS HERO CAROUSEL */}
@@ -544,11 +651,11 @@ export default function App() {
                             onClick={() => {
                               if (isCourse) {
                                 setSelectedCourse(app);
+                              } else {
+                                setSelectedToolForFeedback(app);
                               }
                             }}
-                            className={`glass p-5 rounded-2xl flex flex-col justify-between gap-4 group hover:border-app-text/30 transition-all duration-300 shadow-sm hover:shadow ${
-                              isCourse ? "cursor-pointer hover:shadow-lg hover:bg-violet-500/[0.02]" : ""
-                            }`}
+                            className="glass p-5 rounded-2xl flex flex-col justify-between gap-4 group hover:border-app-text/30 transition-all duration-300 shadow-sm hover:shadow cursor-pointer hover:shadow-lg hover:bg-indigo-500/[0.01]"
                           >
                             <div className="space-y-4">
                               {/* Top Badges */}
@@ -590,16 +697,16 @@ export default function App() {
                                   {app.subtitle}
                                 </p>
                                 
-                                {isCourse && (
-                                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-amber-500 font-mono">
-                                    <div className="flex items-center gap-0.5 text-yellow-500">
-                                      <Star className="w-3 h-3 fill-current text-yellow-500" />
-                                      <span className="font-bold">{app.rating || 4.8}</span>
-                                    </div>
-                                    <span className="text-app-text-muted select-none">•</span>
-                                    <span className="text-app-text-muted">By {app.instructor || "Expert Professor"}</span>
+                                <div className="flex items-center gap-1.5 mt-2 text-[10px] text-amber-500 font-mono">
+                                  <div className="flex items-center gap-0.5 text-yellow-500">
+                                    <Star className="w-3 h-3 fill-current text-yellow-500" />
+                                    <span className="font-bold">{app.rating || 4.8}</span>
                                   </div>
-                                )}
+                                  <span className="text-app-text-muted select-none">•</span>
+                                  <span className="text-app-text-muted hover:underline transition">
+                                    {isCourse ? `By ${app.instructor || "Expert Professor"}` : "Onboarding & Reviews"}
+                                  </span>
+                                </div>
 
                                 <p className="text-xs text-app-text-muted mt-2.5 line-clamp-3 leading-relaxed">
                                   {app.description}
@@ -618,8 +725,8 @@ export default function App() {
 
                               <button
                                 onClick={(e) => {
+                                  e.stopPropagation();
                                   if (isCourse) {
-                                    e.stopPropagation();
                                     setSelectedCourse(app);
                                   } else {
                                     handleAppLaunch(app);

@@ -200,7 +200,9 @@ const SEED_FEEDBACK: any[] = [
     userName: "Alex Johnson",
     onboarded: 1,
     onboardedComment: "Thanks Alex! We have added 3 new lessons specifically covering React 19 UseActionState and UseFormStatus hooks.",
-    createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+    feedbackType: "idea",
+    createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
+    onboardedAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
   },
   {
     id: 2,
@@ -211,7 +213,9 @@ const SEED_FEEDBACK: any[] = [
     userName: "Maria S.",
     onboarded: 0,
     onboardedComment: "",
-    createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString()
+    feedbackType: "idea",
+    createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+    onboardedAt: ""
   }
 ];
 
@@ -436,6 +440,7 @@ class JsonDatabase {
     }
     list[index].onboarded = 1;
     list[index].onboardedComment = comment || "";
+    list[index].onboardedAt = new Date().toISOString();
     this.writeFeedback(list);
     return list[index];
   }
@@ -539,6 +544,7 @@ class SqliteDatabase {
                   userName TEXT NOT NULL,
                   onboarded INTEGER NOT NULL DEFAULT 0,
                   onboardedComment TEXT NOT NULL DEFAULT '',
+                  feedbackType TEXT NOT NULL DEFAULT 'feedback',
                   createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
                 )`,
                 (fErr: any) => {
@@ -546,6 +552,10 @@ class SqliteDatabase {
                     console.error("[SQLite DB] Feedback Table Creation failed:", fErr);
                     return reject(fErr);
                   }
+
+                  // Safe ALTER TABLE statement to add feedbackType dynamically if the table exists
+                  this.db.run("ALTER TABLE saas_feedback ADD COLUMN feedbackType TEXT NOT NULL DEFAULT 'feedback'", () => {});
+                  this.db.run("ALTER TABLE saas_feedback ADD COLUMN onboardedAt TEXT", () => {});
 
                   this.db.get("SELECT COUNT(*) as count FROM saas_feedback", (fCountErr: any, fRow: any) => {
                     if (fCountErr) return reject(fCountErr);
@@ -817,8 +827,8 @@ class SqliteDatabase {
   async addFeedback(feedback: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const q = `
-        INSERT INTO saas_feedback (appId, appName, rating, comment, userName, onboarded, onboardedComment, createdAt)
-        VALUES (?, ?, ?, ?, ?, 0, '', CURRENT_TIMESTAMP)
+        INSERT INTO saas_feedback (appId, appName, rating, comment, userName, onboarded, onboardedComment, feedbackType, createdAt)
+        VALUES (?, ?, ?, ?, ?, 0, '', ?, CURRENT_TIMESTAMP)
       `;
       const self = this;
       this.db.run(q, [
@@ -826,7 +836,8 @@ class SqliteDatabase {
         feedback.appName || "Unknown SaaS",
         Number(feedback.rating),
         feedback.comment || "",
-        feedback.userName || "Anonymous"
+        feedback.userName || "Anonymous",
+        feedback.feedbackType || "feedback"
       ], function(this: any, err: any) {
         if (err) return reject(err);
         
@@ -847,11 +858,12 @@ class SqliteDatabase {
     return new Promise((resolve, reject) => {
       const q = `
         UPDATE saas_feedback 
-        SET onboarded = 1, onboardedComment = ? 
+        SET onboarded = 1, onboardedComment = ?, onboardedAt = ? 
         WHERE id = ?
       `;
       const self = this;
-      this.db.run(q, [comment || "", Number(id)], function(this: any, err: any) {
+      const now = new Date().toISOString();
+      this.db.run(q, [comment || "", now, Number(id)], function(this: any, err: any) {
         if (err) return reject(err);
         
         self.db.get("SELECT * FROM saas_feedback WHERE id = ?", [Number(id)], (fetchErr: any, row: any) => {
@@ -1301,7 +1313,7 @@ async function startServer() {
 
   // POST submit new feedback (rating, comment) for an app
   app.post("/api/feedback", async (req, res) => {
-    const { appId, appName, rating, comment, userName } = req.body;
+    const { appId, appName, rating, comment, userName, feedbackType } = req.body;
 
     if (!appId || !rating || !comment) {
       return res.status(400).json({ error: "Missing required fields (appId, rating, comment) in body" });
@@ -1313,7 +1325,8 @@ async function startServer() {
         appName,
         rating,
         comment,
-        userName
+        userName,
+        feedbackType: feedbackType || "feedback"
       });
       res.status(201).json(newFeedback);
     } catch (err) {
